@@ -1,9 +1,9 @@
-from fastapi import APIRouter, UploadFile, File, HTTPException
+from fastapi import APIRouter, UploadFile, File, HTTPException, Query
 from app.utils.preprocess import preprocess_image
 from app.services.ocr import extract_text
 from app.services.gemini_service import extract_receipt_data
 from app.utils.confidence import calculate_confidence
-from app.services.receipts_service import save_receipt
+from app.services.receipts_service import save_receipt, get_receipt_by_id, get_all_receipts
 
 router = APIRouter(
     prefix="/receipts",
@@ -54,4 +54,34 @@ async def upload_receipt(file: UploadFile = File(...)):
         "confidence": confidence_score,
         "status": confidence_status,
         "receipt_id": receipt_id
+    }
+
+@router.get("/receipt/{id}")
+async def get_receipt(id: str):
+    """
+    Fetch a single receipt by ID.
+    """
+    receipt = await get_receipt_by_id(id)
+    
+    if not receipt:
+        raise HTTPException(status_code=404, detail="Receipt not found")
+    
+    return receipt
+
+@router.get("/receipts")
+async def get_receipts(
+    page: int = Query(1, ge=1, description="Page number"),
+    limit: int = Query(10, ge=1, le=100, description="Items per page")
+):
+    """
+    Fetch paginated list of receipts.
+    """
+    skip = (page - 1) * limit
+    receipts = await get_all_receipts(skip=skip, limit=limit)
+    
+    return {
+        "page": page,
+        "limit": limit,
+        "receipts": receipts,
+        "count": len(receipts)
     }
