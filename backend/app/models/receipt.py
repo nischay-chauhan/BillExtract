@@ -28,7 +28,7 @@ class FuelInfo(BaseModel):
 class Receipt(BaseModel):
     store_name: Optional[str] = None
     address: Optional[str] = None
-    date: Optional[str] = None  # Keeping as string for flexibility, can be parsed later
+    date: Optional[str] = None 
     category: Optional[ReceiptCategory] = None
     subtotal: Optional[float] = None
     tax: Optional[float] = None

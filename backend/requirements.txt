@@ -6,3 +6,6 @@ httpx
 python-multipart
 opencv-python-headless
 numpy
+paddlepaddle
+paddleocr
+google-generativeai
