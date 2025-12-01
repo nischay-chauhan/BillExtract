@@ -7,6 +7,7 @@ import { Title, Subtitle, Caption, Body } from '../components/ui/Typography';
 import { Card } from '../components/ui/Card';
 import { getReceipts, ReceiptData } from '../api/receipts';
 import { RootStackParamList } from '../navigation/AppNavigator';
+import { spacing } from '../utils/responsive';
 
 type ReceiptsScreenNavigationProp = StackNavigationProp<RootStackParamList>;
 
@@ -51,7 +52,7 @@ const ReceiptsScreen = () => {
 
   return (
     <ScreenWrapper>
-      <View className="mb-4">
+      <View style={{ marginBottom: spacing.md }}>
         <Title>My Receipts</Title>
       </View>
 
@@ -59,7 +60,7 @@ const ReceiptsScreen = () => {
         data={receipts}
         keyExtractor={(item) => item._id || item.id || Math.random().toString()}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 20 }}
+        contentContainerStyle={{ paddingBottom: spacing.lg }}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
@@ -86,7 +87,7 @@ const ReceiptsScreen = () => {
               onPress={() => navigation.navigate('ReceiptDetails', { receipt: item })}
               activeOpacity={0.7}
             >
-              <Card className="mb-3">
+              <Card style={{ marginBottom: spacing.sm }}>
                 <View className="flex-row justify-between items-start mb-2">
                   <View>
                     <Subtitle className="mb-0">{item.store_name || 'Unknown Store'}</Subtitle>

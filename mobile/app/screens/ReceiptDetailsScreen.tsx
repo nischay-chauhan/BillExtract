@@ -6,6 +6,7 @@ import { ScreenWrapper } from '../components/ui/ScreenWrapper';
 import { Title, Subtitle, Body, Caption } from '../components/ui/Typography';
 import { Card } from '../components/ui/Card';
 import { RootStackParamList } from '../navigation/AppNavigator';
+import { spacing } from '../utils/responsive';
 
 type ReceiptDetailsRouteProp = RouteProp<RootStackParamList, 'ReceiptDetails'>;
 type ReceiptDetailsNavigationProp = StackNavigationProp<RootStackParamList, 'ReceiptDetails'>;
@@ -30,8 +31,8 @@ const ReceiptDetailsScreen = () => {
 
     return (
         <ScreenWrapper>
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 20 }}>
-                <View className="flex-row items-center mb-6">
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: spacing.lg }}>
+                <View className="flex-row items-center" style={{ marginBottom: spacing.md }}>
                     <TouchableOpacity onPress={() => navigation.goBack()} className="mr-3">
                         <Body className="text-blue-600 text-lg">← Back</Body>
                     </TouchableOpacity>
@@ -39,7 +40,7 @@ const ReceiptDetailsScreen = () => {
                 </View>
 
                 {/* Store Info */}
-                <Card className="mb-4">
+                <Card style={{ marginBottom: spacing.md }}>
                     <Subtitle className="mb-3">Store Information</Subtitle>
                     <View className="mb-2">
                         <Caption>Store Name</Caption>
@@ -56,7 +57,7 @@ const ReceiptDetailsScreen = () => {
                 </Card>
 
                 {/* Total */}
-                <Card className="mb-4 bg-blue-50 border-blue-200">
+                <Card className="bg-blue-50 border-blue-200" style={{ marginBottom: spacing.md }}>
                     <View className="flex-row justify-between items-center">
                         <Subtitle className="mb-0 text-blue-800">Total Amount</Subtitle>
                         <Title className="text-2xl text-blue-600 mb-0">{formattedTotal}</Title>
@@ -64,7 +65,7 @@ const ReceiptDetailsScreen = () => {
                 </Card>
 
                 {/* Items */}
-                <View className="mb-2">
+                <View style={{ marginBottom: spacing.sm }}>
                     <Subtitle className="mb-3">Items ({receipt.items?.length || 0})</Subtitle>
                 </View>
 
@@ -84,7 +85,7 @@ const ReceiptDetailsScreen = () => {
                         }
 
                         return (
-                            <Card key={index} className="mb-3">
+                            <Card key={index} style={{ marginBottom: spacing.sm }}>
                                 <View className="flex-row justify-between items-start mb-2">
                                     <View className="flex-1 mr-2">
                                         <Body className="font-semibold text-gray-800">{item.name || 'Unnamed Item'}</Body>

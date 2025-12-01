@@ -10,6 +10,7 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import { uploadReceipt } from '../api/receipts';
 import { testGeminiDirect } from '../api/gemini-direct';
+import { hp, wp, spacing, isSmallDevice } from '../utils/responsive';
 
 type ScanScreenNavigationProp = StackNavigationProp<RootStackParamList>;
 
@@ -118,22 +119,26 @@ const ScanScreen = () => {
 
   return (
     <ScreenWrapper>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
-        <Title className="mb-6">Scan Receipt</Title>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: spacing.xxl * 2 }}>
+        <Title style={{ marginBottom: spacing.md }}>Scan Receipt</Title>
 
         {selectedImage ? (
-          <Card className="p-0 overflow-hidden mb-6 h-80">
+          <Card className="p-0 overflow-hidden" style={{ marginBottom: spacing.md, height: hp(300) }}>
             <Image source={{ uri: selectedImage }} className="w-full h-full" resizeMode="contain" />
           </Card>
         ) : (
-          <View className="h-80 bg-gray-100 rounded-2xl border-2 border-dashed border-gray-300 items-center justify-center mb-6">
+          <View
+            className="bg-gray-100 rounded-2xl border-2 border-dashed border-gray-300 items-center justify-center"
+            style={{ height: hp(300), marginBottom: spacing.md }}
+          >
             <Body className="text-gray-400">No image selected</Body>
           </View>
         )}
 
-        <View className="gap-4">
+        <View style={{ gap: spacing.md }}>
           <TouchableOpacity
-            className={`bg-blue-600 p-4 rounded-xl items-center ${uploading ? 'opacity-50' : ''}`}
+            className={`bg-blue-600 rounded-xl items-center ${uploading ? 'opacity-50' : ''}`}
+            style={{ padding: spacing.md }}
             onPress={takePhoto}
             disabled={uploading}
           >
@@ -141,7 +146,8 @@ const ScanScreen = () => {
           </TouchableOpacity>
 
           <TouchableOpacity
-            className={`bg-green-600 p-4 rounded-xl items-center ${uploading ? 'opacity-50' : ''}`}
+            className={`bg-green-600 rounded-xl items-center ${uploading ? 'opacity-50' : ''}`}
+            style={{ padding: spacing.md }}
             onPress={pickFromGallery}
             disabled={uploading}
           >
@@ -150,7 +156,8 @@ const ScanScreen = () => {
 
           {selectedImage && (
             <TouchableOpacity
-              className={`bg-orange-500 p-4 rounded-xl items-center ${uploading ? 'opacity-50' : ''}`}
+              className={`bg-orange-500 rounded-xl items-center ${uploading ? 'opacity-50' : ''}`}
+              style={{ padding: spacing.md }}
               onPress={handleUpload}
               disabled={uploading}
             >
@@ -164,7 +171,8 @@ const ScanScreen = () => {
 
           {selectedImage && (
             <TouchableOpacity
-              className={`bg-purple-600 p-4 rounded-xl items-center ${uploading ? 'opacity-50' : ''}`}
+              className={`bg-purple-600 rounded-xl items-center ${uploading ? 'opacity-50' : ''}`}
+              style={{ padding: spacing.md }}
               onPress={handleDirectTest}
               disabled={uploading}
             >

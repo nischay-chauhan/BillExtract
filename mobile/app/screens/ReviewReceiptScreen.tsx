@@ -16,6 +16,7 @@ import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import { ReceiptItem, updateReceipt } from '../api/receipts';
+import { spacing, rfs } from '../utils/responsive';
 
 type ReviewReceiptRouteProp = RouteProp<RootStackParamList, 'ReviewReceipt'>;
 type ReviewReceiptNavigationProp = StackNavigationProp<RootStackParamList, 'ReviewReceipt'>;
@@ -89,13 +90,14 @@ const ReviewReceiptScreen = () => {
 
     return (
         <ScreenWrapper>
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: spacing.xxl * 3 }}>
                 <Title>Review Receipt</Title>
 
-                <View className="mb-4">
-                    <Subtitle className="mb-2">Store Name</Subtitle>
+                <View style={{ marginBottom: spacing.md }}>
+                    <Subtitle style={{ marginBottom: spacing.sm }}>Store Name</Subtitle>
                     <TextInput
-                        className="bg-white border border-gray-200 rounded-xl p-3 text-base text-gray-900"
+                        className="bg-white border border-gray-200 rounded-xl text-gray-900"
+                        style={{ padding: spacing.sm, fontSize: rfs(14) }}
                         value={storeName}
                         onChangeText={setStoreName}
                         placeholder="Enter store name"
@@ -103,20 +105,22 @@ const ReviewReceiptScreen = () => {
                     />
                 </View>
 
-                <View className="mb-4">
-                    <Subtitle className="mb-2">Date</Subtitle>
+                <View style={{ marginBottom: spacing.md }}>
+                    <Subtitle style={{ marginBottom: spacing.sm }}>Date</Subtitle>
                     <TextInput
-                        className="bg-white border border-gray-200 rounded-xl p-3 text-base text-gray-900"
+                        className="bg-white border border-gray-200 rounded-xl text-gray-900"
+                        style={{ padding: spacing.sm, fontSize: rfs(14) }}
                         value={date}
                         onChangeText={setDate}
                         placeholder="YYYY-MM-DD"
                         placeholderTextColor="#9CA3AF"
                     />
                 </View>
-                <View className="mb-6">
-                    <Subtitle className="mb-2">Total Amount</Subtitle>
+                <View style={{ marginBottom: spacing.md }}>
+                    <Subtitle style={{ marginBottom: spacing.sm }}>Total Amount</Subtitle>
                     <TextInput
-                        className="bg-white border border-gray-200 rounded-xl p-3 text-base text-gray-900"
+                        className="bg-white border border-gray-200 rounded-xl text-gray-900"
+                        style={{ padding: spacing.sm, fontSize: rfs(14) }}
                         value={total}
                         onChangeText={setTotal}
                         placeholder="0.00"
@@ -126,16 +130,20 @@ const ReviewReceiptScreen = () => {
                 </View>
 
                 <View>
-                    <View className="flex-row justify-between items-center mb-4">
+                    <View className="flex-row justify-between items-center" style={{ marginBottom: spacing.md }}>
                         <Subtitle className="mb-0">Items</Subtitle>
-                        <TouchableOpacity className="bg-green-500 px-4 py-2 rounded-lg" onPress={handleAddItem}>
+                        <TouchableOpacity
+                            className="bg-green-500 rounded-lg"
+                            style={{ paddingHorizontal: spacing.md, paddingVertical: spacing.sm }}
+                            onPress={handleAddItem}
+                        >
                             <Text className="text-white font-semibold">+ Add Item</Text>
                         </TouchableOpacity>
                     </View>
 
                     {items.map((item, index) => (
-                        <Card key={index} className="mb-4">
-                            <View className="flex-row justify-between items-center mb-3">
+                        <Card key={index} style={{ marginBottom: spacing.md }}>
+                            <View className="flex-row justify-between items-center" style={{ marginBottom: spacing.sm }}>
                                 <Body className="font-semibold text-gray-500">Item {index + 1}</Body>
                                 <TouchableOpacity onPress={() => handleRemoveItem(index)}>
                                     <Text className="text-red-500 font-semibold">Remove</Text>
@@ -143,18 +151,20 @@ const ReviewReceiptScreen = () => {
                             </View>
 
                             <TextInput
-                                className="bg-gray-50 border border-gray-200 rounded-lg p-3 mb-3 text-base text-gray-900"
+                                className="bg-gray-50 border border-gray-200 rounded-lg text-gray-900"
+                                style={{ padding: spacing.sm, marginBottom: spacing.sm, fontSize: rfs(14) }}
                                 value={item.name}
                                 onChangeText={(value) => handleUpdateItem(index, 'name', value)}
                                 placeholder="Item name"
                                 placeholderTextColor="#9CA3AF"
                             />
 
-                            <View className="flex-row gap-3">
+                            <View className="flex-row" style={{ gap: spacing.sm }}>
                                 <View className="flex-1">
                                     <Caption className="mb-1">Quantity</Caption>
                                     <TextInput
-                                        className="bg-gray-50 border border-gray-200 rounded-lg p-2 text-sm text-gray-900"
+                                        className="bg-gray-50 border border-gray-200 rounded-lg text-gray-900"
+                                        style={{ padding: spacing.sm, fontSize: rfs(12) }}
                                         value={item.quantity.toString()}
                                         onChangeText={(value) => handleUpdateItem(index, 'quantity', value)}
                                         keyboardType="numeric"
@@ -165,7 +175,8 @@ const ReviewReceiptScreen = () => {
                                 <View className="flex-1">
                                     <Caption className="mb-1">Price</Caption>
                                     <TextInput
-                                        className="bg-gray-50 border border-gray-200 rounded-lg p-2 text-sm text-gray-900"
+                                        className="bg-gray-50 border border-gray-200 rounded-lg text-gray-900"
+                                        style={{ padding: spacing.sm, fontSize: rfs(12) }}
                                         value={item.price.toString()}
                                         onChangeText={(value) => handleUpdateItem(index, 'price', value)}
                                         keyboardType="decimal-pad"
@@ -182,10 +193,10 @@ const ReviewReceiptScreen = () => {
                 </View>
             </ScrollView>
 
-            {/* Save Button */}
-            <View className="absolute bottom-0 left-0 right-0 bg-white p-5 border-t border-gray-200">
+            <View className="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-200" style={{ padding: spacing.md }}>
                 <TouchableOpacity
-                    className={`bg-blue-600 py-4 rounded-xl items-center ${saving ? 'opacity-50' : ''}`}
+                    className={`bg-blue-600 rounded-xl items-center ${saving ? 'opacity-50' : ''}`}
+                    style={{ paddingVertical: spacing.md }}
                     onPress={handleSave}
                     disabled={saving}
                 >
