@@ -9,3 +9,5 @@ numpy
 paddlepaddle
 paddleocr
 google-generativeai
+python-jose[cryptography]
+passlib[bcrypt]

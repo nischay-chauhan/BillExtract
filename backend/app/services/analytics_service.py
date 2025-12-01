@@ -2,14 +2,14 @@ from datetime import datetime
 from app.utils.db import get_database
 from collections import defaultdict
 
-async def get_monthly_analytics():
+async def get_monthly_analytics(user_id: str):
     """
-    Returns spending totals grouped by month (YYYY-MM).
+    Returns spending totals grouped by month (YYYY-MM) for a specific user.
     """
     db = await get_database()
     receipts_collection = db.receipts
     
-    cursor = receipts_collection.find({})
+    cursor = receipts_collection.find({"user_id": user_id})
     receipts = await cursor.to_list(length=None)
     
     monthly_totals = defaultdict(float)
@@ -30,14 +30,15 @@ async def get_monthly_analytics():
     
     return result
 
-async def get_category_analytics():
+
+async def get_category_analytics(user_id: str):
     """
-    Returns spending totals grouped by category.
+    Returns spending totals grouped by category for a specific user.
     """
     db = await get_database()
     receipts_collection = db.receipts
     
-    cursor = receipts_collection.find({})
+    cursor = receipts_collection.find({"user_id": user_id})
     receipts = await cursor.to_list(length=None)
     
     category_totals = defaultdict(float)
@@ -56,3 +57,4 @@ async def get_category_analytics():
     ]
     
     return result
+

@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.routers import receipts, analytics
+from app.routers import receipts, analytics, auth
 
 app = FastAPI(title="Receipt Scanner API")
 
@@ -14,9 +14,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(auth.router)
 app.include_router(receipts.router)
 app.include_router(analytics.router)
 
 @app.get("/")
 def read_root():
     return {"status": "ok"}
+

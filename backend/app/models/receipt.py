@@ -26,6 +26,7 @@ class FuelInfo(BaseModel):
     amount: Optional[float] = None
 
 class Receipt(BaseModel):
+    user_id: str  # Link receipt to a user
     store_name: Optional[str] = None
     address: Optional[str] = None
     date: Optional[str] = None 
@@ -46,3 +47,4 @@ class Receipt(BaseModel):
 
     class Config:
         use_enum_values = True
+
