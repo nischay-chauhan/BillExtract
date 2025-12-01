@@ -2,7 +2,7 @@ from paddleocr import PaddleOCR
 import numpy as np
 import cv2
 
-ocr = PaddleOCR(use_angle_cls=True, lang='en', show_log=False)
+ocr = PaddleOCR(use_angle_cls=True, lang='en')
 
 def extract_text(image_bytes: bytes) -> str:
     """

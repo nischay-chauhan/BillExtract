@@ -77,6 +77,36 @@ async def get_all_receipts(skip: int = 0, limit: int = 100) -> list:
         
     return receipts
 
+async def update_receipt(receipt_id: str, update_data: dict) -> dict:
+    """
+    Updates a receipt by ID.
+    
+    Args:
+        receipt_id: MongoDB ObjectId as string
+        update_data: Data to update
+        
+    Returns:
+        dict: Updated receipt document or None
+    """
+    db = await get_database()
+    receipts_collection = db.receipts
+    
+    # Add updated_at timestamp
+    update_data["updated_at"] = datetime.utcnow()
+    
+    # Update the document
+    result = await receipts_collection.find_one_and_update(
+        {"_id": ObjectId(receipt_id)},
+        {"$set": update_data},
+        return_document=True
+    )
+    
+    if result:
+        result["_id"] = str(result["_id"])
+        
+    return result
+
+
 async def delete_receipt(receipt_id: str) -> bool:
     """
     Deletes a receipt by ID.

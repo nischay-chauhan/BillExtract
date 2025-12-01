@@ -1,24 +1,15 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View } from 'react-native';
+import { ScreenWrapper } from '../components/ui/ScreenWrapper';
+import { Title, Body } from '../components/ui/Typography';
 
 const SettingsScreen = () => {
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Settings</Text>
-    </View>
+    <ScreenWrapper>
+      <Title>Settings</Title>
+      <Body>Coming soon...</Body>
+    </ScreenWrapper>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-  },
-});
 
 export default SettingsScreen;

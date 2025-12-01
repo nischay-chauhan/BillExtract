@@ -1,14 +1,42 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, Image, ActivityIndicator, ScrollView, Alert } from 'react-native';
+import { ScreenWrapper } from '../components/ui/ScreenWrapper';
+import { Title, Body } from '../components/ui/Typography';
+import { Card } from '../components/ui/Card';
+
 import * as ImagePicker from 'expo-image-picker';
+import { useNavigation } from '@react-navigation/native';
+import { StackNavigationProp } from '@react-navigation/stack';
+import { RootStackParamList } from '../navigation/AppNavigator';
+import { uploadReceipt } from '../api/receipts';
+import { testGeminiDirect } from '../api/gemini-direct';
+
+type ScanScreenNavigationProp = StackNavigationProp<RootStackParamList>;
 
 const ScanScreen = () => {
+  const navigation = useNavigation<ScanScreenNavigationProp>();
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+
+
+  const handleDirectTest = async () => {
+    if (!selectedImage) return;
+    setUploading(true);
+    try {
+      const result = await testGeminiDirect(selectedImage);
+      Alert.alert('Gemini Result', result.substring(0, 500) + '...');
+    } catch (error: any) {
+      Alert.alert('Error', error.message);
+    } finally {
+      setUploading(false);
+    }
+  };
 
   const takePhoto = async () => {
     try {
       const permissionResult = await ImagePicker.requestCameraPermissionsAsync();
-      
+
       if (!permissionResult.granted) {
         Alert.alert('Permission Required', 'Camera permission is required to take photos.');
         return;
@@ -33,7 +61,7 @@ const ScanScreen = () => {
   const pickFromGallery = async () => {
     try {
       const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      
+
       if (!permissionResult.granted) {
         Alert.alert('Permission Required', 'Gallery permission is required to select images.');
         return;
@@ -55,71 +83,103 @@ const ScanScreen = () => {
     }
   };
 
+  const handleUpload = async () => {
+    if (!selectedImage) {
+      Alert.alert('No Image', 'Please select or take a photo first.');
+      return;
+    }
+
+    setUploading(true);
+    setUploadError(null);
+
+    try {
+      console.log('[ScanScreen] Uploading image:', selectedImage);
+      const response = await uploadReceipt(selectedImage);
+
+      console.log('[ScanScreen] Upload successful, navigating to ReviewReceipt');
+
+      navigation.navigate('ReviewReceipt', {
+        receiptData: response.extracted,
+        receiptId: response.receipt_id,
+        confidence: response.confidence,
+        status: response.status,
+      });
+
+      setSelectedImage(null);
+    } catch (error: any) {
+      console.error('[ScanScreen] Upload failed:', error);
+      const errorMessage = error.message || 'Failed to upload receipt';
+      setUploadError(errorMessage);
+      Alert.alert('Upload Failed', errorMessage);
+    } finally {
+      setUploading(false);
+    }
+  };
+
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Scan Receipt</Text>
-      
-      {selectedImage && (
-        <View style={styles.imageContainer}>
-          <Image source={{ uri: selectedImage }} style={styles.image} />
+    <ScreenWrapper>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
+        <Title className="mb-6">Scan Receipt</Title>
+
+        {selectedImage ? (
+          <Card className="p-0 overflow-hidden mb-6 h-80">
+            <Image source={{ uri: selectedImage }} className="w-full h-full" resizeMode="contain" />
+          </Card>
+        ) : (
+          <View className="h-80 bg-gray-100 rounded-2xl border-2 border-dashed border-gray-300 items-center justify-center mb-6">
+            <Body className="text-gray-400">No image selected</Body>
+          </View>
+        )}
+
+        <View className="gap-4">
+          <TouchableOpacity
+            className={`bg-blue-600 p-4 rounded-xl items-center ${uploading ? 'opacity-50' : ''}`}
+            onPress={takePhoto}
+            disabled={uploading}
+          >
+            <Text className="text-white text-lg font-semibold">Take Photo</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            className={`bg-green-600 p-4 rounded-xl items-center ${uploading ? 'opacity-50' : ''}`}
+            onPress={pickFromGallery}
+            disabled={uploading}
+          >
+            <Text className="text-white text-lg font-semibold">Pick from Gallery</Text>
+          </TouchableOpacity>
+
+          {selectedImage && (
+            <TouchableOpacity
+              className={`bg-orange-500 p-4 rounded-xl items-center ${uploading ? 'opacity-50' : ''}`}
+              onPress={handleUpload}
+              disabled={uploading}
+            >
+              {uploading ? (
+                <ActivityIndicator color="white" />
+              ) : (
+                <Text className="text-white text-lg font-semibold">Upload & Process</Text>
+              )}
+            </TouchableOpacity>
+          )}
+
+          {selectedImage && (
+            <TouchableOpacity
+              className={`bg-purple-600 p-4 rounded-xl items-center ${uploading ? 'opacity-50' : ''}`}
+              onPress={handleDirectTest}
+              disabled={uploading}
+            >
+              <Text className="text-white text-lg font-semibold">Test Direct Gemini</Text>
+            </TouchableOpacity>
+          )}
         </View>
-      )}
-      
-      <View style={styles.buttonContainer}>
-        <TouchableOpacity style={styles.button} onPress={takePhoto}>
-          <Text style={styles.buttonText}>Take Photo</Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity style={[styles.button, styles.buttonSecondary]} onPress={pickFromGallery}>
-          <Text style={styles.buttonText}>Pick from Gallery</Text>
-        </TouchableOpacity>
-      </View>
-    </View>
+
+        {uploadError && (
+          <Text className="text-red-500 text-center mt-4">{uploadError}</Text>
+        )}
+      </ScrollView>
+    </ScreenWrapper>
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 30,
-  },
-  imageContainer: {
-    width: '100%',
-    height: 300,
-    marginBottom: 30,
-    borderRadius: 10,
-    overflow: 'hidden',
-  },
-  image: {
-    width: '100%',
-    height: '100%',
-    resizeMode: 'contain',
-  },
-  buttonContainer: {
-    width: '100%',
-    gap: 15,
-  },
-  button: {
-    backgroundColor: '#007AFF',
-    padding: 15,
-    borderRadius: 10,
-    alignItems: 'center',
-  },
-  buttonSecondary: {
-    backgroundColor: '#34C759',
-  },
-  buttonText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-});
-
 export default ScanScreen;
+
