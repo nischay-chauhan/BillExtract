@@ -7,3 +7,5 @@ python-multipart
 google-generativeai
 python-jose[cryptography]
 passlib[bcrypt]
+email-validator
+argon2-cffi

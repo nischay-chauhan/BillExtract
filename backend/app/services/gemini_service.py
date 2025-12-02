@@ -15,13 +15,15 @@ Return JSON ONLY. No explanatory text.
 Format:
 {
   "store_name": null,
-  "date": null,
+  "date": "YYYY-MM-DD",
   "total": null,
   "category": null,
   "items": [
     { "name": null, "quantity": null, "price": null }
   ]
 }
+
+For "date", strictly use YYYY-MM-DD format (e.g., 2023-12-25). If the year is missing, assume the current year.
 
 For "category", choose the best fit from this list based on the store name and items:
 - grocery

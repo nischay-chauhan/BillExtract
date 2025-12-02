@@ -4,10 +4,8 @@ import { Platform } from 'react-native';
 // Use localhost for iOS simulator, 10.0.2.2 for Android emulator
 // For physical devices, replace with your computer's IP address
 const getBaseUrl = () => {
-    // Use LAN IP to allow access from physical devices and emulators
-    // IMPORTANT: Ensure backend is running with: uvicorn app.main:app --host 0.0.0.0 --port 8000
-     return 'http://10.53.72.27:8000';
-    // return 'http://localhost:8000';
+    // EC2 Instance URL
+    return 'http://3.109.185.58:8001';
 };
 
 const BASE_URL = getBaseUrl();
