@@ -1,147 +1,285 @@
-import React from 'react';
-import { View, ScrollView, TouchableOpacity } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import { ScreenWrapper } from '../components/ui/ScreenWrapper';
-import { Title, Subtitle, Body, Caption } from '../components/ui/Typography';
-import { Card } from '../components/ui/Card';
-import { wp, hp, spacing, isSmallDevice, rfs } from '../utils/responsive';
+import React, { useState, useEffect } from "react";
+import { View, ScrollView, TouchableOpacity, Text, ActivityIndicator } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
+import { PieChart, BarChart } from "react-native-gifted-charts";
+
+import { ScreenWrapper } from "../components/ui/ScreenWrapper";
+import { Title, Subtitle, Body, Caption } from "../components/ui/Typography";
+import { Card } from "../components/ui/Card";
+import { wp, hp, spacing, isSmallDevice, rfs } from "../utils/responsive";
+import { getSpendingByCategory } from "../api/receipts";
+
+type DateRange = "week" | "month" | "year";
 
 const AnalyticsScreen = () => {
-  // Dummy data for analytics
-  const monthlySpending = [
-    { month: 'Jan', amount: 342.50 },
-    { month: 'Feb', amount: 478.20 },
-    { month: 'Mar', amount: 523.80 },
-  ];
+  const [dateRange, setDateRange] = useState<DateRange>("month");
+  const [categoryData, setCategoryData] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const topCategories = [
-    { name: 'Groceries', amount: 456.30, color: ['#10b981', '#059669'] as const, icon: '🛒' },
-    { name: 'Restaurants', amount: 325.50, color: ['#f59e0b', '#d97706'] as const, icon: '🍽️' },
-    { name: 'Shopping', amount: 278.90, color: ['#ec4899', '#db2777'] as const, icon: '🛍️' },
-    { name: 'Transport', amount: 156.20, color: ['#6366f1', '#4f46e5'] as const, icon: '🚗' },
-  ];
+  useEffect(() => {
+    fetchAnalytics();
+  }, [dateRange]);
+
+  const fetchAnalytics = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const now = new Date();
+      let startDate = new Date();
+
+      if (dateRange === "week") startDate = new Date(now.getTime() - 7 * 86400000);
+      if (dateRange === "month") startDate = new Date(now.getTime() - 30 * 86400000);
+      if (dateRange === "year") startDate = new Date(now.getTime() - 365 * 86400000);
+
+      const data = await getSpendingByCategory(
+        startDate.toISOString().split("T")[0],
+        now.toISOString().split("T")[0]
+      );
+
+      setCategoryData(data);
+    } catch (err: any) {
+      setError(err.message || "Failed to load analytics");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getCategoryColor = (category: string) =>
+  ({
+    grocery: "#4CAF50",
+    restaurant: "#FF9800",
+    petrol: "#2196F3",
+    pharmacy: "#E91E63",
+    electronics: "#9C27B0",
+    food_delivery: "#FF5722",
+    parking: "#607D8B",
+    toll: "#795548",
+    general: "#757575",
+  }[category] || "#757575");
+
+  const getCategoryLabel = (category: string) =>
+  ({
+    grocery: "Grocery",
+    restaurant: "Restaurant",
+    petrol: "Petrol/Fuel",
+    pharmacy: "Pharmacy",
+    electronics: "Electronics",
+    food_delivery: "Food Delivery",
+    parking: "Parking",
+    toll: "Toll",
+    general: "General",
+  }[category] || category);
+
+  const totalSpending = categoryData.reduce((s, i) => s + i.total, 0);
+  const totalReceipts = categoryData.reduce((s, i) => s + i.count, 0);
+  const topCategory = categoryData[0] || null;
+
+  const pieData = categoryData.map(item => ({
+    value: item.total,
+    color: getCategoryColor(item.category),
+    text: `₹${item.total.toFixed(0)}`,
+    shiftTextX: -10,
+    shiftTextY: -10,
+  }));
+
+  const barData = categoryData.slice(0, 5).map(item => ({
+    value: item.total,
+    label: getCategoryLabel(item.category).slice(0, 8),
+    frontColor: '#6366f1',
+    topLabelComponent: () => (
+      <Text style={{ color: '#6366f1', fontSize: 10, marginBottom: 4 }}>
+        ₹${item.total.toFixed(0)}
+      </Text>
+    ),
+  }));
 
   return (
     <ScreenWrapper>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: spacing.lg }}>
-        {/* Header */}
-        <View style={{ marginBottom: spacing.md }}>
-          <Title>Analytics</Title>
-          <Body>Track your spending patterns and insights</Body>
-        </View>
-
-        {/* Month Overview Cards */}
-        <View style={{ marginBottom: spacing.md }}>
-          <Subtitle style={{ marginBottom: spacing.sm }}>This Month</Subtitle>
-          <View className={isSmallDevice ? "mb-3" : "flex-row justify-between mb-3"} style={{ gap: spacing.sm }}>
-            {/* Total Spending */}
-            <LinearGradient
-              colors={['#8b5cf6', '#7c3aed']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              className={isSmallDevice ? "rounded-2xl mb-3" : "flex-1 rounded-2xl"}
-              style={{ padding: spacing.md, minHeight: hp(100) }}
-            >
-              <Caption className="text-purple-100">Total Spending</Caption>
-              <Title className="text-white mt-1 mb-0">$1,344</Title>
-              <Caption className="text-purple-200 mt-1">↑ 12% from last month</Caption>
-            </LinearGradient>
-
-            {/* Average per Day */}
-            <LinearGradient
-              colors={['#06b6d4', '#0891b2']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              className={isSmallDevice ? "rounded-2xl" : "flex-1 rounded-2xl"}
-              style={{ padding: spacing.md, minHeight: hp(100) }}
-            >
-              <Caption className="text-cyan-100">Avg per Day</Caption>
-              <Title className="text-white mt-1 mb-0">$44.80</Title>
-              <Caption className="text-cyan-200 mt-1">30 days tracked</Caption>
-            </LinearGradient>
-          </View>
-
-          {/* Budget Status */}
-          <LinearGradient
-            colors={['#f97316', '#ea580c']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            className="rounded-2xl"
-            style={{ padding: spacing.md }}
-          >
-            <View className="flex-row justify-between items-center mb-2">
-              <Caption className="text-orange-100">Budget Status</Caption>
-              <Body className="text-white font-semibold">67%</Body>
+      <View style={{ flex: 1, alignItems: "center" }}>
+        <View style={{ width: "100%", flex: 1 }}>
+          <ScrollView contentContainerStyle={{ paddingBottom: spacing.lg }}>
+            <View style={{ marginBottom: spacing.md }}>
+              <Title>Analytics</Title>
+              <Body>Track your spending patterns</Body>
             </View>
-            <View className="bg-white/20 rounded-full h-2 mb-2">
-              <View className="bg-white rounded-full h-2" style={{ width: '67%' }} />
-            </View>
-            <Caption className="text-orange-100">$1,344 of $2,000 budget used</Caption>
-          </LinearGradient>
-        </View>
 
-        {/* Top Categories */}
-        <View style={{ marginBottom: spacing.md }}>
-          <Subtitle style={{ marginBottom: spacing.sm }}>Top Categories</Subtitle>
-          {topCategories.map((category, index) => (
-            <TouchableOpacity key={index} activeOpacity={0.7}>
-              <Card style={{ marginBottom: spacing.sm }}>
-                <View className="flex-row items-center justify-between">
-                  <View className="flex-row items-center flex-1">
-                    <LinearGradient
-                      colors={category.color}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 1 }}
-                      className="rounded-xl items-center justify-center"
-                      style={{ height: wp(48), width: wp(48), marginRight: spacing.sm }}
+            <View style={{ marginBottom: spacing.md }}>
+              <View
+                style={{
+                  flexDirection: "row",
+                  backgroundColor: "rgba(255,255,255,0.1)",
+                  borderRadius: 8,
+                  padding: 4,
+                }}
+              >
+                {(["week", "month", "year"] as DateRange[]).map((range) => (
+                  <TouchableOpacity
+                    key={range}
+                    onPress={() => setDateRange(range)}
+                    style={{
+                      flex: 1,
+                      paddingVertical: 8,
+                      borderRadius: 8,
+                      backgroundColor: dateRange === range ? "#6366f1" : "transparent",
+                    }}
+                  >
+                    <Text
+                      style={{
+                        textAlign: "center",
+                        color: "#fff",
+                        fontWeight: dateRange === range ? "600" : "400",
+                      }}
                     >
-                      <Body style={{ fontSize: rfs(22) }}>{category.icon}</Body>
-                    </LinearGradient>
-                    <View className="flex-1">
-                      <Subtitle className="text-base mb-0">{category.name}</Subtitle>
-                      <Caption>{((category.amount / 1344) * 100).toFixed(0)}% of total</Caption>
-                    </View>
-                  </View>
-                  <Title className="text-lg mb-0">${category.amount.toFixed(2)}</Title>
-                </View>
-              </Card>
-            </TouchableOpacity>
-          ))}
-        </View>
-
-        {/* Monthly Trends */}
-        <View style={{ marginBottom: spacing.md }}>
-          <Subtitle style={{ marginBottom: spacing.sm }}>Recent Months</Subtitle>
-          {monthlySpending.map((item, index) => (
-            <Card key={index} className="mb-3">
-              <View className="flex-row justify-between items-center">
-                <View>
-                  <Subtitle className="text-base mb-0">{item.month} 2025</Subtitle>
-                  <Caption>Monthly spending</Caption>
-                </View>
-                <Title className="text-xl mb-0 text-gray-800">${item.amount.toFixed(2)}</Title>
+                      Last{" "}
+                      {range === "week"
+                        ? "7 Days"
+                        : range === "month"
+                          ? "30 Days"
+                          : "Year"}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
               </View>
-            </Card>
-          ))}
-        </View>
+            </View>
+            {loading && (
+              <View style={{ padding: spacing.xl, alignItems: "center" }}>
+                <ActivityIndicator size="large" color="#6366f1" />
+              </View>
+            )}
 
-        {/* Quick Stats */}
-        <View>
-          <Subtitle style={{ marginBottom: spacing.sm }}>Quick Stats</Subtitle>
-          <View className="flex-row flex-wrap justify-between" style={{ gap: spacing.sm }}>
-            <Card style={{ width: isSmallDevice ? '100%' : '48%', marginBottom: spacing.sm }} className=" bg-emerald-50 border-emerald-200">
-              <Caption className="text-emerald-700">Most Expensive</Caption>
-              <Subtitle className="text-emerald-900 mt-1">$156.80</Subtitle>
-              <Caption className="text-emerald-600">Whole Foods</Caption>
-            </Card>
-            <Card className="w-[48%] mb-3 bg-amber-50 border-amber-200">
-              <Caption className="text-amber-700">Total Receipts</Caption>
-              <Subtitle className="text-amber-900 mt-1">47</Subtitle>
-              <Caption className="text-amber-600">This month</Caption>
-            </Card>
-          </View>
+            {error && (
+              <Card>
+                <Body className="text-center text-red-500">{error}</Body>
+              </Card>
+            )}
+
+            {/* EMPTY */}
+            {!loading && !error && categoryData.length === 0 && (
+              <Card>
+                <Body className="text-center text-gray-400">
+                  No spending data for this period
+                </Body>
+              </Card>
+            )}
+
+            {!loading && !error && categoryData.length > 0 && (
+              <>
+                <View
+                  style={{
+                    marginBottom: spacing.md,
+                    flexDirection: isSmallDevice ? "column" : "row",
+                    gap: spacing.sm,
+                  }}
+                >
+                  <LinearGradient
+                    colors={["#8b5cf6", "#7c3aed"]}
+                    style={{
+                      flex: 1,
+                      borderRadius: spacing.md,
+                      padding: spacing.md,
+                      minHeight: hp(100),
+                    }}
+                  >
+                    <Caption style={{ color: "#e9d5ff" }}>Total Spending</Caption>
+                    <Title style={{ color: "#fff" }}>₹{totalSpending.toFixed(2)}</Title>
+                    <Caption style={{ color: "#e9d5ff", marginTop: 4 }}>
+                      {totalReceipts} receipts
+                    </Caption>
+                  </LinearGradient>
+
+                  <LinearGradient
+                    colors={["#06b6d4", "#0891b2"]}
+                    style={{
+                      flex: 1,
+                      borderRadius: spacing.md,
+                      padding: spacing.md,
+                      minHeight: hp(100),
+                    }}
+                  >
+                    <Caption style={{ color: "#cffafe" }}>Top Category</Caption>
+                    <Title style={{ color: "#fff" }}>
+                      {topCategory ? getCategoryLabel(topCategory.category) : "N/A"}
+                    </Title>
+                    <Caption style={{ color: "#cffafe", marginTop: 4 }}>
+                      ₹{topCategory?.total?.toFixed(2) || "0.00"}
+                    </Caption>
+                  </LinearGradient>
+                </View>
+
+                <Card style={{ marginBottom: spacing.md }}>
+                  <Subtitle>Spending Distribution</Subtitle>
+                  <View style={{ alignItems: "center", width: "100%", paddingVertical: 10 }}>
+                    <PieChart
+                      data={pieData}
+                      donut
+                      showText
+                      textColor="black"
+                      radius={isSmallDevice ? 100 : 120}
+                      innerRadius={isSmallDevice ? 50 : 60}
+                      textSize={10}
+                      focusOnPress
+                      showValuesAsLabels={false}
+                    />
+                  </View>
+                </Card>
+
+                <Card style={{ marginBottom: spacing.md }}>
+                  <Subtitle>Top 5 Categories</Subtitle>
+                  <View style={{ alignItems: "center", width: "100%", paddingVertical: 10 }}>
+                    <BarChart
+                      data={barData}
+                      barWidth={isSmallDevice ? 20 : 30}
+                      noOfSections={4}
+                      barBorderRadius={4}
+                      frontColor="#6366f1"
+                      yAxisThickness={0}
+                      xAxisThickness={0}
+                      hideRules
+                      isAnimated
+                      width={isSmallDevice ? 250 : 300}
+                      height={200}
+                      labelWidth={40}
+                      xAxisLabelTextStyle={{ color: 'gray', fontSize: 10 }}
+                    />
+                  </View>
+                </Card>
+
+                <Subtitle>All Categories</Subtitle>
+                {categoryData.map((item, index) => (
+                  <Card key={index} style={{ marginBottom: spacing.sm }}>
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                        justifyContent: "space-between"
+                      }}
+                    >
+                      <View style={{ flexDirection: "row", alignItems: "center" }}>
+                        <View
+                          style={{
+                            width: wp(40),
+                            height: wp(40),
+                            borderRadius: spacing.sm,
+                            backgroundColor: getCategoryColor(item.category),
+                            marginRight: spacing.sm
+                          }}
+                        />
+                        <View>
+                          <Subtitle>{getCategoryLabel(item.category)}</Subtitle>
+                          <Caption>{item.count} receipts</Caption>
+                        </View>
+                      </View>
+                      <Title>₹{item.total.toFixed(2)}</Title>
+                    </View>
+                  </Card>
+                ))}
+              </>
+            )}
+          </ScrollView>
         </View>
-      </ScrollView>
+      </View>
     </ScreenWrapper>
   );
 };

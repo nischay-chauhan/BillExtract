@@ -1,22 +1,125 @@
-import React from 'react';
-import { View, ScrollView, TouchableOpacity, Switch } from 'react-native';
+import React, { useState } from 'react';
+import { View, ScrollView, TouchableOpacity, Switch, Alert, ActivityIndicator, Platform, Modal, TouchableWithoutFeedback } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as Print from 'expo-print';
+import * as Sharing from 'expo-sharing';
 import { ScreenWrapper } from '../components/ui/ScreenWrapper';
 import { Title, Subtitle, Body, Caption } from '../components/ui/Typography';
 import { Card } from '../components/ui/Card';
 import { wp, hp, spacing, isSmallDevice, rfs } from '../utils/responsive';
+import { useAuthStore } from '../store/authStore';
+import { getReceipts } from '../api/receipts';
+import { generateReceiptsHTML } from '../utils/pdfGenerator';
 
 type SettingsItem = {
   icon: string;
   label: string;
   value: boolean | string | null;
   toggle?: React.Dispatch<React.SetStateAction<boolean>>;
+  action?: () => void;
 };
 
 const SettingsScreen = () => {
   const [notifications, setNotifications] = React.useState(true);
   const [darkMode, setDarkMode] = React.useState(false);
   const [autoSync, setAutoSync] = React.useState(true);
+  const [isExporting, setIsExporting] = useState(false);
+  const [showExportOptions, setShowExportOptions] = useState(false);
+
+  const { user, logout } = useAuthStore();
+
+  const handleLogout = () => {
+    Alert.alert(
+      'Log Out',
+      'Are you sure you want to log out?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Log Out',
+          style: 'destructive',
+          onPress: async () => {
+            await logout();
+          }
+        }
+      ]
+    );
+  };
+
+  const handleExportData = () => {
+    if (Platform.OS === 'web') {
+      setShowExportOptions(true);
+    } else {
+      Alert.alert(
+        'Export Data',
+        'Choose export range:',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Last 10 Transactions',
+            onPress: () => exportTransactions(10, 'Last 10 Transactions')
+          },
+          {
+            text: 'Last 30 Transactions',
+            onPress: () => exportTransactions(30, 'Last 30 Transactions')
+          }
+        ]
+      );
+    }
+  };
+
+  const exportTransactions = async (limit: number, title: string) => {
+    let webWindow: any = null;
+
+    try {
+      // On Web, open the window immediately to avoid popup blockers and isolate print context
+      if (Platform.OS === 'web') {
+        webWindow = window.open('', '_blank');
+        if (!webWindow) {
+          Alert.alert('Popup Blocked', 'Please allow popups for this site to generate reports.');
+          return;
+        }
+        webWindow.document.write('<html><body style="font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh;"><h2>Generating PDF Report...</h2></body></html>');
+      }
+
+      setIsExporting(true);
+
+      // 1. Fetch receipts
+      const receipts = await getReceipts(1, limit);
+
+      if (receipts.length === 0) {
+        if (webWindow) webWindow.close();
+        Alert.alert('No Data', 'No transactions found to export.');
+        return;
+      }
+
+      // 2. Generate HTML
+      const html = generateReceiptsHTML(receipts, title);
+
+      // 3. Handle Web vs Native
+      if (Platform.OS === 'web' && webWindow) {
+        webWindow.document.open();
+        webWindow.document.write(html);
+        webWindow.document.close();
+
+        // Small delay to ensure rendering before print dialog
+        setTimeout(() => {
+          webWindow.print();
+        }, 500);
+      } else {
+        // On native, generate a PDF file and share/save it.
+        const { uri } = await Print.printToFileAsync({ html });
+        console.log('PDF generated at:', uri);
+        await Sharing.shareAsync(uri, { UTI: '.pdf', mimeType: 'application/pdf' });
+      }
+
+    } catch (error) {
+      console.error('Export failed:', error);
+      if (webWindow) webWindow.close();
+      Alert.alert('Export Failed', 'Could not generate PDF report.');
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   const settingsSections: { title: string; items: SettingsItem[] }[] = [
     {
@@ -25,6 +128,7 @@ const SettingsScreen = () => {
         { icon: '👤', label: 'Profile Settings', value: null },
         { icon: '🔒', label: 'Privacy & Security', value: null },
         { icon: '💳', label: 'Payment Methods', value: null },
+        { icon: '🚪', label: 'Log Out', value: null },
       ],
     },
     {
@@ -38,7 +142,7 @@ const SettingsScreen = () => {
     {
       title: 'Data',
       items: [
-        { icon: '📊', label: 'Export Data', value: null },
+        { icon: '📊', label: 'Export Data', value: null, action: handleExportData },
         { icon: '☁️', label: 'Backup & Restore', value: null },
         { icon: '🗑️', label: 'Clear Cache', value: '24 MB' },
       ],
@@ -87,12 +191,12 @@ const SettingsScreen = () => {
                 marginRight: spacing.md
               }}
             >
-              <Body style={{ fontSize: rfs(28) }}>👨‍💼</Body>
+              <Body style={{ fontSize: rfs(28) }}>👤</Body>
             </LinearGradient>
             <View className="flex-1">
-              <Subtitle className="text-white mb-0">John Doe</Subtitle>
-              <Caption className="text-indigo-100 mt-1">john.doe@example.com</Caption>
-              <Caption className="text-indigo-200 mt-1">Premium Member</Caption>
+              <Subtitle className="text-white mb-0">{user?.email?.split('@')[0] || 'User'}</Subtitle>
+              <Caption className="text-indigo-100 mt-1">{user?.email || 'user@example.com'}</Caption>
+              <Caption className="text-indigo-200 mt-1">Free Member</Caption>
             </View>
             <TouchableOpacity
               className="bg-white/20 rounded-lg"
@@ -128,7 +232,7 @@ const SettingsScreen = () => {
                 paddingVertical: spacing.sm
               }}
             >
-              <Body className="text-orange-600 font-bold">$9.99</Body>
+              <Body className="text-orange-600 font-bold">₹999</Body>
             </View>
           </View>
         </LinearGradient>
@@ -143,6 +247,13 @@ const SettingsScreen = () => {
                   activeOpacity={0.7}
                   style={{ padding: spacing.md }}
                   className={itemIndex !== section.items.length - 1 ? 'border-b border-gray-100' : ''}
+                  onPress={() => {
+                    if (item.action) {
+                      item.action();
+                    } else if (item.label === 'Log Out') {
+                      handleLogout();
+                    }
+                  }}
                 >
                   <View className="flex-row items-center justify-between">
                     <View className="flex-row items-center flex-1">
@@ -184,12 +295,71 @@ const SettingsScreen = () => {
           <Caption className="text-center text-gray-400 mt-1">Made with ❤️ by Your Team</Caption>
         </Card>
 
-        <TouchableOpacity activeOpacity={0.8} style={{ marginTop: spacing.md }}>
+        <TouchableOpacity
+          activeOpacity={0.8}
+          style={{ marginTop: spacing.md }}
+          onPress={handleLogout}
+        >
           <Card className="bg-red-50 border-red-200">
             <Body className="text-red-600 font-semibold text-center">Log Out</Body>
           </Card>
         </TouchableOpacity>
       </ScrollView>
+
+      {/* Web Export Options Modal */}
+      <Modal
+        visible={showExportOptions}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowExportOptions(false)}
+      >
+        <TouchableWithoutFeedback onPress={() => setShowExportOptions(false)}>
+          <View className="flex-1 bg-black/50 justify-center items-center p-4">
+            <TouchableWithoutFeedback>
+              <View className="bg-white rounded-2xl p-6 w-full max-w-sm">
+                <Title className="text-center mb-2">Export Data</Title>
+                <Body className="text-center text-gray-500 mb-6">Choose export range:</Body>
+
+                <TouchableOpacity
+                  className="bg-indigo-50 p-4 rounded-xl mb-3"
+                  onPress={() => {
+                    setShowExportOptions(false);
+                    exportTransactions(10, 'Last 10 Transactions');
+                  }}
+                >
+                  <Body className="text-indigo-600 text-center font-semibold">Last 10 Transactions</Body>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  className="bg-indigo-50 p-4 rounded-xl mb-3"
+                  onPress={() => {
+                    setShowExportOptions(false);
+                    exportTransactions(30, 'Last 30 Transactions');
+                  }}
+                >
+                  <Body className="text-indigo-600 text-center font-semibold">Last 30 Transactions</Body>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  className="p-4 rounded-xl"
+                  onPress={() => setShowExportOptions(false)}
+                >
+                  <Body className="text-gray-500 text-center font-medium">Cancel</Body>
+                </TouchableOpacity>
+              </View>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
+
+      {isExporting && (
+        <View className="absolute inset-0 bg-black/30 items-center justify-center z-50">
+          <Card className="items-center p-6">
+            <ActivityIndicator size="large" color="#4f46e5" />
+            <Body className="mt-4 font-medium">Generating PDF Report...</Body>
+          </Card>
+        </View>
+      )}
     </ScreenWrapper>
   );
 };

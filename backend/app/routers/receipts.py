@@ -1,6 +1,7 @@
 from fastapi import APIRouter, UploadFile, File, HTTPException, Query, Depends
 from app.services.gemini_service import extract_receipt_data
 from app.services.receipts_service import save_receipt, get_receipt_by_id, get_all_receipts, update_receipt
+from app.services.category_service import CategoryService
 from pydantic import BaseModel
 from typing import Optional, List
 from app.utils.auth import get_current_user
@@ -57,7 +58,22 @@ async def upload_receipt(
         logger.error(f"Gemini extraction failed: {str(e)}")
         receipt_data = {}
     
-    # Save to MongoDB with user_id
+    if receipt_data:
+        gemini_category = receipt_data.get('category')
+        
+        if gemini_category and CategoryService.validate_category(gemini_category):
+            logger.info(f"Gemini assigned category: {gemini_category}")
+        else:
+            category = CategoryService.assign_category(receipt_data)
+            receipt_data['category'] = category
+            logger.info(f"Auto-assigned category (fallback): {category}")
+
+        if not receipt_data.get('date'):
+            from datetime import datetime
+            current_date = datetime.now().strftime("%Y-%m-%d")
+            receipt_data['date'] = current_date
+            logger.info(f"Date missing, defaulted to: {current_date}")
+    
     try:
         saved_receipt = await save_receipt(receipt_data, "", 0.0, user.id)
         receipt_id = saved_receipt.get("_id")
@@ -66,7 +82,6 @@ async def upload_receipt(
         logger.error(f"MongoDB save failed: {str(e)}")
         receipt_id = None
     
-    # Return structured JSON
     return {
         "extracted": receipt_data,
         "confidence": 0.0,
@@ -83,7 +98,6 @@ async def get_receipt(
     """
     Fetch a single receipt by ID. Requires authentication.
     """
-    # Get user from token
     user = await get_user_by_email(token_data.email)
     if not user:
         raise HTTPException(status_code=401, detail="User not found")
@@ -107,7 +121,6 @@ async def get_receipts(
     """
     Fetch paginated list of receipts for the authenticated user.
     """
-    # Get user from token
     user = await get_user_by_email(token_data.email)
     if not user:
         raise HTTPException(status_code=401, detail="User not found")
@@ -133,17 +146,14 @@ async def update_receipt_endpoint(
     """
     Update receipt data by ID. Requires authentication.
     """
-    # Get user from token
     user = await get_user_by_email(token_data.email)
     if not user:
         raise HTTPException(status_code=401, detail="User not found")
     
     logger.info(f"User {user.email} updating receipt: {id}")
     
-    # Convert Pydantic model to dict, excluding None values
     update_data = request.dict(exclude_none=True)
     
-    # Convert items to dict format if present
     if "items" in update_data:
         update_data["items"] = [item.dict() for item in request.items]
     
@@ -162,3 +172,43 @@ async def update_receipt_endpoint(
     except Exception as e:
         logger.error(f"Failed to update receipt: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to update receipt: {str(e)}")
+
+@router.patch("/receipt/{id}/category")
+async def update_receipt_category(
+    id: str,
+    category: str,
+    token_data: TokenData = Depends(get_current_user)
+):
+    """
+    Update receipt category by ID. Requires authentication.
+    
+    Args:
+        id: Receipt ID
+        category: New category value (must be valid ReceiptCategory)
+    """
+    user = await get_user_by_email(token_data.email)
+    if not user:
+        raise HTTPException(status_code=401, detail="User not found")
+    
+    if not CategoryService.validate_category(category):
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Invalid category. Must be one of: {CategoryService.get_all_categories()}"
+        )
+    
+    logger.info(f"User {user.email} updating category for receipt {id} to {category}")
+    
+    try:
+        updated_receipt = await update_receipt(id, {"category": category}, user.id)
+        
+        if not updated_receipt:
+            logger.warning(f"Receipt not found or access denied: {id} for user {user.email}")
+            raise HTTPException(status_code=404, detail="Receipt not found")
+        
+        logger.info(f"Category updated successfully: {id}")
+        return updated_receipt
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to update category: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to update category: {str(e)}")

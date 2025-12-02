@@ -1,5 +1,7 @@
-import React, { useState, useCallback } from 'react';
-import { View, FlatList, ActivityIndicator, RefreshControl, TouchableOpacity } from 'react-native';
+import React, { useState, useCallback, useMemo } from 'react';
+import { View, FlatList, ActivityIndicator, RefreshControl, TouchableOpacity, Text, Platform } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { ScreenWrapper } from '../components/ui/ScreenWrapper';
@@ -8,6 +10,8 @@ import { Card } from '../components/ui/Card';
 import { getReceipts, ReceiptData } from '../api/receipts';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import { spacing } from '../utils/responsive';
+import { formatDate } from '../utils/format';
+import { sanitizeNumber } from '../utils/validation';
 
 type ReceiptsScreenNavigationProp = StackNavigationProp<RootStackParamList>;
 
@@ -16,6 +20,13 @@ const ReceiptsScreen = () => {
   const [receipts, setReceipts] = useState<ReceiptData[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [sortBy, setSortBy] = useState<'date' | 'amount'>('date');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+
+  // Date Range Filtering State
+  const [startDate, setStartDate] = useState<Date | null>(null);
+  const [endDate, setEndDate] = useState<Date | null>(null);
+  const [showPicker, setShowPicker] = useState<'start' | 'end' | null>(null);
 
   const fetchReceipts = async () => {
     try {
@@ -40,6 +51,73 @@ const ReceiptsScreen = () => {
     fetchReceipts();
   };
 
+  const getAmount = (r: ReceiptData) => {
+    return sanitizeNumber(r.total);
+  };
+
+  const sortedReceipts = useMemo(() => {
+    let filtered = [...receipts];
+
+    // Filter by Date Range
+    if (startDate || endDate) {
+      filtered = filtered.filter(r => {
+        if (!r.date) return false;
+        const rDate = new Date(r.date).getTime();
+
+        let inRange = true;
+        if (startDate) {
+          inRange = inRange && rDate >= startDate.getTime();
+        }
+        if (endDate) {
+          // Set end date to end of day
+          const endOfDay = new Date(endDate);
+          endOfDay.setHours(23, 59, 59, 999);
+          inRange = inRange && rDate <= endOfDay.getTime();
+        }
+        return inRange;
+      });
+    }
+
+    return filtered.sort((a, b) => {
+      if (sortBy === 'date') {
+        const dateA = new Date(a.date || 0).getTime();
+        const dateB = new Date(b.date || 0).getTime();
+        return sortOrder === 'asc' ? dateA - dateB : dateB - dateA;
+      } else {
+        const amountA = getAmount(a);
+        const amountB = getAmount(b);
+        return sortOrder === 'asc' ? amountA - amountB : amountB - amountA;
+      }
+    });
+  }, [receipts, sortBy, sortOrder, startDate, endDate]);
+
+  const toggleSort = (type: 'date' | 'amount') => {
+    if (sortBy === type) {
+      setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortBy(type);
+      setSortOrder('desc');
+    }
+  };
+
+  const onDateChange = (event: any, selectedDate?: Date) => {
+    const currentPicker = showPicker;
+    setShowPicker(null);
+
+    if (event.type === 'dismissed' || !selectedDate) return;
+
+    if (currentPicker === 'start') {
+      setStartDate(selectedDate);
+    } else if (currentPicker === 'end') {
+      setEndDate(selectedDate);
+    }
+  };
+
+  const clearDateFilter = () => {
+    setStartDate(null);
+    setEndDate(null);
+  };
+
   if (loading && !refreshing) {
     return (
       <ScreenWrapper>
@@ -54,10 +132,100 @@ const ReceiptsScreen = () => {
     <ScreenWrapper>
       <View style={{ marginBottom: spacing.md }}>
         <Title>My Receipts</Title>
+        <View className="flex-row mt-4" style={{ gap: spacing.sm }}>
+          <TouchableOpacity
+            onPress={() => toggleSort('date')}
+            className={`flex-row items-center px-4 py-2 rounded-full border ${sortBy === 'date' ? 'bg-blue-600 border-blue-600' : 'bg-white border-gray-300'}`}
+          >
+            <Text className={`font-medium ${sortBy === 'date' ? 'text-white' : 'text-gray-700'}`}>Date</Text>
+            {sortBy === 'date' && (
+              <Ionicons name={sortOrder === 'desc' ? 'arrow-down' : 'arrow-up'} size={16} color="white" style={{ marginLeft: 4 }} />
+            )}
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={() => toggleSort('amount')}
+            className={`flex-row items-center px-4 py-2 rounded-full border ${sortBy === 'amount' ? 'bg-blue-600 border-blue-600' : 'bg-white border-gray-300'}`}
+          >
+            <Text className={`font-medium ${sortBy === 'amount' ? 'text-white' : 'text-gray-700'}`}>Amount</Text>
+            {sortBy === 'amount' && (
+              <Ionicons name={sortOrder === 'desc' ? 'arrow-down' : 'arrow-up'} size={16} color="white" style={{ marginLeft: 4 }} />
+            )}
+          </TouchableOpacity>
+        </View>
+
+        {/* Date Range Picker UI */}
+        <View className="flex-row items-center mt-4" style={{ gap: spacing.sm }}>
+          <TouchableOpacity
+            onPress={() => setShowPicker('start')}
+            className="flex-1 flex-row items-center justify-between bg-white border border-gray-300 rounded-lg px-3 py-2"
+          >
+            <Text className={startDate ? "text-gray-900" : "text-gray-400"}>
+              {startDate ? formatDate(startDate.toISOString()) : "Start Date"}
+            </Text>
+            <Ionicons name="calendar-outline" size={16} color="gray" />
+          </TouchableOpacity>
+
+          <Text className="text-gray-400">-</Text>
+
+          <TouchableOpacity
+            onPress={() => setShowPicker('end')}
+            className="flex-1 flex-row items-center justify-between bg-white border border-gray-300 rounded-lg px-3 py-2"
+          >
+            <Text className={endDate ? "text-gray-900" : "text-gray-400"}>
+              {endDate ? formatDate(endDate.toISOString()) : "End Date"}
+            </Text>
+            <Ionicons name="calendar-outline" size={16} color="gray" />
+          </TouchableOpacity>
+
+          {(startDate || endDate) && (
+            <TouchableOpacity onPress={clearDateFilter} className="bg-gray-200 p-2 rounded-full">
+              <Ionicons name="close" size={16} color="gray" />
+            </TouchableOpacity>
+          )}
+        </View>
+
+        {showPicker && (
+          Platform.OS === 'web' ? (
+            <View className="mt-2 bg-gray-100 p-2 rounded-lg">
+              <Text className="text-xs text-gray-500 mb-1">
+                {showPicker === 'start' ? 'Start Date' : 'End Date'}
+              </Text>
+              {React.createElement('input', {
+                type: 'date',
+                value: showPicker === 'start' ? (startDate?.toISOString().split('T')[0] || '') : (endDate?.toISOString().split('T')[0] || ''),
+                onChange: (e: any) => {
+                  const date = e.target.value ? new Date(e.target.value) : undefined;
+                  onDateChange({ type: 'set' }, date);
+                },
+                style: {
+                  padding: 8,
+                  borderRadius: 4,
+                  border: '1px solid #ccc',
+                  width: '100%'
+                }
+              })}
+              <TouchableOpacity
+                onPress={() => setShowPicker(null)}
+                className="mt-2 items-end"
+              >
+                <Text className="text-blue-600">Done</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <DateTimePicker
+              value={showPicker === 'start' ? (startDate || new Date()) : (endDate || new Date())}
+              mode="date"
+              display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+              onChange={onDateChange}
+              maximumDate={new Date()}
+            />
+          )
+        )}
       </View>
 
       <FlatList
-        data={receipts}
+        data={sortedReceipts}
         keyExtractor={(item) => item._id || item.id || Math.random().toString()}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: spacing.lg }}
@@ -70,28 +238,32 @@ const ReceiptsScreen = () => {
           </View>
         }
         renderItem={({ item }) => {
-          let formattedTotal = '$0.00';
-          if (typeof item.total === 'number') {
-            formattedTotal = `$${item.total.toFixed(2)}`;
-          } else if (typeof item.total === 'string') {
-            const numericTotal = parseFloat(item.total.replace(/,/g, ''));
-            if (!isNaN(numericTotal)) {
-              formattedTotal = `$${numericTotal.toFixed(2)}`;
-            } else {
-              formattedTotal = item.total;
-            }
-          }
+          const numericTotal = sanitizeNumber(item.total);
+          const formattedTotal = `₹${numericTotal.toFixed(2)}`;
 
           return (
             <TouchableOpacity
               onPress={() => navigation.navigate('ReceiptDetails', { receipt: item })}
               activeOpacity={0.7}
             >
-              <Card style={{ marginBottom: spacing.sm }}>
+              <Card
+                style={{
+                  marginBottom: spacing.md,
+                  shadowColor: "#000",
+                  shadowOffset: {
+                    width: 0,
+                    height: 2,
+                  },
+                  shadowOpacity: 0.1,
+                  shadowRadius: 3.84,
+                  elevation: 5,
+                }}
+                className="bg-white rounded-xl"
+              >
                 <View className="flex-row justify-between items-start mb-2">
                   <View>
                     <Subtitle className="mb-0">{item.store_name || 'Unknown Store'}</Subtitle>
-                    <Caption>{item.date || 'No date'}</Caption>
+                    <Caption>{formatDate(item.date)}</Caption>
                   </View>
                   <Title className="text-xl text-blue-600 mb-0">{formattedTotal}</Title>
                 </View>

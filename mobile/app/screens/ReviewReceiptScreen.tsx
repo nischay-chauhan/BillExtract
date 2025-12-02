@@ -8,6 +8,7 @@ import {
     Alert,
     ActivityIndicator,
 } from 'react-native';
+import Toast from 'react-native-toast-message';
 import { ScreenWrapper } from '../components/ui/ScreenWrapper';
 import { Title, Subtitle, Body, Caption } from '../components/ui/Typography';
 import { Card } from '../components/ui/Card';
@@ -17,6 +18,7 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import { ReceiptItem, updateReceipt } from '../api/receipts';
 import { spacing, rfs } from '../utils/responsive';
+import { validateReceiptData } from '../utils/validation';
 
 type ReviewReceiptRouteProp = RouteProp<RootStackParamList, 'ReviewReceipt'>;
 type ReviewReceiptNavigationProp = StackNavigationProp<RootStackParamList, 'ReviewReceipt'>;
@@ -58,39 +60,76 @@ const ReviewReceiptScreen = () => {
     };
 
     const handleSave = async () => {
+        // Validate data before saving
+        const validationResult = validateReceiptData({
+            store_name: storeName,
+            date: date,
+            total: total,
+            items: items
+        });
+
+        if (!validationResult.isValid) {
+            // Show first error via toast
+            Toast.show({
+                type: 'error',
+                text1: 'Validation Error',
+                text2: validationResult.errors[0],
+                position: 'bottom',
+                visibilityTime: 4000,
+            });
+            return;
+        }
+
         setSaving(true);
         try {
-            const updatePayload = {
-                store_name: storeName,
-                date: date,
-                total: parseFloat(total) || 0,
-                items: items,
-            };
-
             console.log('[ReviewReceipt] State values:', { storeName, date, total, items });
-            console.log('[ReviewReceipt] Saving receipt:', receiptId, JSON.stringify(updatePayload, null, 2));
+            console.log('[ReviewReceipt] Saving receipt:', receiptId, JSON.stringify(validationResult.sanitizedData, null, 2));
 
-            await updateReceipt(receiptId, updatePayload);
+            await updateReceipt(receiptId, validationResult.sanitizedData);
 
-            navigation.reset({
-                index: 0,
-                routes: [
-                    {
-                        name: 'Main',
-                        params: { screen: 'Receipts' },
-                    },
-                ],
+            Toast.show({
+                type: 'success',
+                text1: 'Success',
+                text2: 'Receipt saved successfully!',
+                position: 'bottom',
+                visibilityTime: 2000,
             });
+
+            // Navigate after a short delay to show the toast
+            setTimeout(() => {
+                navigation.reset({
+                    index: 0,
+                    routes: [
+                        {
+                            name: 'Main',
+                            params: { screen: 'Receipts' },
+                        },
+                    ],
+                });
+            }, 500);
         } catch (error: any) {
             console.error('[ReviewReceipt] Save failed:', error);
-            Alert.alert('Error', error.message || 'Failed to save receipt');
+
+            // Extract error message from server response
+            let errorMessage = 'Failed to save receipt';
+            if (error.message) {
+                errorMessage = error.message;
+            }
+
+            Toast.show({
+                type: 'error',
+                text1: 'Save Failed',
+                text2: errorMessage,
+                position: 'bottom',
+                visibilityTime: 4000,
+            });
             setSaving(false);
         }
     };
 
     return (
         <ScreenWrapper>
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: spacing.xxl * 3 }}>
+            <ScrollView showsVerticalScrollIndicator={true} contentContainerStyle={{ paddingBottom: spacing.xxl * 3 }}>
                 <Title>Review Receipt</Title>
 
                 <View style={{ marginBottom: spacing.md }}>

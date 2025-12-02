@@ -8,7 +8,7 @@ app = FastAPI(title="Receipt Scanner API")
 # Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allow all origins for development (restrict in production)
+    allow_origin_regex=".*",  # Allow all origins
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

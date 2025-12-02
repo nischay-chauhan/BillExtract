@@ -4,6 +4,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useFonts, Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold } from '@expo-google-fonts/inter';
 import AppNavigator from './app/navigation/AppNavigator';
 import { View, ActivityIndicator } from 'react-native';
+import Toast from 'react-native-toast-message';
 
 export default function App() {
   let [fontsLoaded] = useFonts({
@@ -25,6 +26,7 @@ export default function App() {
     <>
       <AppNavigator />
       <StatusBar style="auto" />
+      <Toast />
     </>
   );
 }

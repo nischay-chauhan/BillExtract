@@ -1,10 +1,15 @@
-import { Dimensions, PixelRatio } from 'react-native';
+import { Dimensions, PixelRatio, Platform } from 'react-native';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 // Base dimensions (iPhone 11 Pro as reference)
 const BASE_WIDTH = 375;
 const BASE_HEIGHT = 812;
+
+// Cap the width for scaling calculations to avoid huge elements on desktop/web
+// We'll use a max width similar to a large phone or small tablet
+const MAX_SCALABLE_WIDTH = 480;
+const EFFECTIVE_WIDTH = Math.min(SCREEN_WIDTH, MAX_SCALABLE_WIDTH);
 
 /**
  * Convert a base width to a responsive width
@@ -13,7 +18,8 @@ const BASE_HEIGHT = 812;
  */
 export const wp = (size: number): number => {
     const percentage = (size / BASE_WIDTH) * 100;
-    const elemWidth = (percentage * SCREEN_WIDTH) / 100;
+    // Use EFFECTIVE_WIDTH instead of SCREEN_WIDTH to cap scaling
+    const elemWidth = (percentage * EFFECTIVE_WIDTH) / 100;
     return Math.round(PixelRatio.roundToNearestPixel(elemWidth));
 };
 
@@ -34,7 +40,8 @@ export const hp = (size: number): number => {
  * @returns Scaled font size
  */
 export const rfs = (size: number): number => {
-    const scale = SCREEN_WIDTH / BASE_WIDTH;
+    // Use EFFECTIVE_WIDTH to calculate scale
+    const scale = EFFECTIVE_WIDTH / BASE_WIDTH;
     const newSize = size * scale;
     return Math.round(PixelRatio.roundToNearestPixel(newSize));
 };

@@ -9,6 +9,8 @@ import { Card } from '../components/ui/Card';
 import { getReceipts, ReceiptData } from '../api/receipts';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import { hp, wp, spacing, isSmallDevice } from '../utils/responsive';
+import { formatCompactNumber } from '../utils/format';
+import { sanitizeNumber } from '../utils/validation';
 
 type HomeScreenNavigationProp = StackNavigationProp<RootStackParamList>;
 
@@ -34,21 +36,10 @@ const HomeScreen = () => {
     }, [])
   );
 
-  // Calculate total spent
   const totalSpent = receipts.reduce((sum, receipt) => {
-    let amount = 0;
-    if (typeof receipt.total === 'number') {
-      amount = receipt.total;
-    } else if (typeof receipt.total === 'string') {
-      const numericTotal = parseFloat(receipt.total.replace(/,/g, ''));
-      if (!isNaN(numericTotal)) {
-        amount = numericTotal;
-      }
-    }
-    return sum + amount;
+    return sum + sanitizeNumber(receipt.total);
   }, 0);
 
-  // Get last 3 receipts for recent activity
   const recentReceipts = receipts.slice(0, 3);
 
   if (loading) {
@@ -64,7 +55,7 @@ const HomeScreen = () => {
   return (
     <ScreenWrapper>
       <ScrollView
-        showsVerticalScrollIndicator={false}
+        showsVerticalScrollIndicator={true}
         contentContainerStyle={{ paddingBottom: spacing.lg }}
       >
         <View style={{ marginBottom: spacing.md }}>
@@ -81,14 +72,14 @@ const HomeScreen = () => {
             colors={['#9333ea', '#7e22ce']}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
-            className={isSmallDevice ? "rounded-2xl border border-purple-800 mb-3" : "flex-1 rounded-2xl border border-purple-800"}
+            className={isSmallDevice ? "rounded-2xl border border-purple-800 mb-2 " : "flex-1 rounded-2xl border border-purple-800"}
             style={{
               padding: spacing.md,
               minHeight: hp(100)
             }}
           >
             <Caption className="text-purple-100">Total Spent</Caption>
-            <Title className="text-white mt-1 mb-0">${totalSpent.toFixed(2)}</Title>
+            <Title className="text-white mt-1 mb-0" style={{ fontSize: 18 }}>{formatCompactNumber(totalSpent)}</Title>
             <Caption className="text-purple-200 mt-2">{receipts.length} receipts</Caption>
           </LinearGradient>
 
@@ -116,17 +107,8 @@ const HomeScreen = () => {
         {recentReceipts.length > 0 ? (
           recentReceipts.map((receipt, index) => {
             // Format total value
-            let formattedTotal = '$0.00';
-            if (typeof receipt.total === 'number') {
-              formattedTotal = `$${receipt.total.toFixed(2)}`;
-            } else if (typeof receipt.total === 'string') {
-              const numericTotal = parseFloat(receipt.total.replace(/,/g, ''));
-              if (!isNaN(numericTotal)) {
-                formattedTotal = `$${numericTotal.toFixed(2)}`;
-              } else {
-                formattedTotal = receipt.total;
-              }
-            }
+            const numericTotal = sanitizeNumber(receipt.total);
+            const formattedTotal = `₹${numericTotal.toFixed(2)}`;
 
             return (
               <TouchableOpacity

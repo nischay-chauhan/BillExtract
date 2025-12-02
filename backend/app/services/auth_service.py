@@ -21,15 +21,12 @@ async def create_user(user: UserCreate) -> UserInDB:
     db = await get_database()
     users_collection = db.users
     
-    # Check if user already exists
     existing_user = await users_collection.find_one({"email": user.email})
     if existing_user:
         raise ValueError("User with this email already exists")
     
-    # Hash the password
     hashed_password = get_password_hash(user.password)
     
-    # Create user document
     user_doc = {
         "email": user.email,
         "hashed_password": hashed_password,
@@ -37,13 +34,10 @@ async def create_user(user: UserCreate) -> UserInDB:
         "updated_at": datetime.utcnow()
     }
     
-    # Insert into database
     result = await users_collection.insert_one(user_doc)
     
-    # Create index on email for faster lookups
     await users_collection.create_index("email", unique=True)
     
-    # Return the created user
     user_doc["_id"] = str(result.inserted_id)
     return UserInDB(**user_doc)
 

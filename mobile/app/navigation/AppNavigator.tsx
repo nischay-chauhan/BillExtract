@@ -1,9 +1,9 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
 import { Ionicons } from '@expo/vector-icons';
-import { Platform } from 'react-native';
+import { Platform, View, ActivityIndicator } from 'react-native';
 
 import HomeScreen from '../screens/HomeScreen';
 import ScanScreen from '../screens/ScanScreen';
@@ -12,11 +12,15 @@ import AnalyticsScreen from '../screens/AnalyticsScreen';
 import SettingsScreen from '../screens/SettingsScreen';
 import ReviewReceiptScreen from '../screens/ReviewReceiptScreen';
 import ReceiptDetailsScreen from '../screens/ReceiptDetailsScreen';
+import LoginScreen from '../screens/LoginScreen';
+import RegisterScreen from '../screens/RegisterScreen';
 import { ReceiptData } from '../api/receipts';
+import { useAuthStore } from '../store/authStore';
 
 import { NavigatorScreenParams } from '@react-navigation/native';
 
 export type RootStackParamList = {
+  Auth: undefined;
   Main: NavigatorScreenParams<MainTabParamList>;
   ReviewReceipt: {
     receiptData: ReceiptData;
@@ -27,6 +31,8 @@ export type RootStackParamList = {
   ReceiptDetails: {
     receipt: ReceiptData;
   };
+  Login: undefined;
+  Register: undefined;
 };
 
 export type MainTabParamList = {
@@ -39,6 +45,16 @@ export type MainTabParamList = {
 
 const Stack = createStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator<MainTabParamList>();
+const AuthStack = createStackNavigator<RootStackParamList>();
+
+const AuthNavigator = () => {
+  return (
+    <AuthStack.Navigator screenOptions={{ headerShown: false }}>
+      <AuthStack.Screen name="Login" component={LoginScreen} />
+      <AuthStack.Screen name="Register" component={RegisterScreen} />
+    </AuthStack.Navigator>
+  );
+};
 
 const MainTabNavigator = () => {
   return (
@@ -125,6 +141,20 @@ const MainTabNavigator = () => {
 };
 
 const AppNavigator = () => {
+  const { isAuthenticated, isLoading, loadToken } = useAuthStore();
+
+  useEffect(() => {
+    loadToken();
+  }, []);
+
+  if (isLoading) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size="large" color="#7C3AED" />
+      </View>
+    );
+  }
+
   return (
     <NavigationContainer>
       <Stack.Navigator
@@ -137,25 +167,31 @@ const AppNavigator = () => {
           }),
         }}
       >
-        <Stack.Screen name="Main" component={MainTabNavigator} />
-        <Stack.Screen
-          name="ReviewReceipt"
-          component={ReviewReceiptScreen}
-          options={{
-            headerShown: false,
-            title: 'Review Receipt',
-            presentation: 'card',
-          }}
-        />
-        <Stack.Screen
-          name="ReceiptDetails"
-          component={ReceiptDetailsScreen}
-          options={{
-            headerShown: false,
-            title: 'Receipt Details',
-            presentation: 'card',
-          }}
-        />
+        {!isAuthenticated ? (
+          <Stack.Screen name="Auth" component={AuthNavigator} />
+        ) : (
+          <>
+            <Stack.Screen name="Main" component={MainTabNavigator} />
+            <Stack.Screen
+              name="ReviewReceipt"
+              component={ReviewReceiptScreen}
+              options={{
+                headerShown: false,
+                title: 'Review Receipt',
+                presentation: 'card',
+              }}
+            />
+            <Stack.Screen
+              name="ReceiptDetails"
+              component={ReceiptDetailsScreen}
+              options={{
+                headerShown: false,
+                title: 'Receipt Details',
+                presentation: 'card',
+              }}
+            />
+          </>
+        )}
       </Stack.Navigator>
     </NavigationContainer>
   );

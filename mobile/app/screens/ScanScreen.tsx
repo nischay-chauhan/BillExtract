@@ -21,18 +21,7 @@ const ScanScreen = () => {
   const [uploadError, setUploadError] = useState<string | null>(null);
 
 
-  const handleDirectTest = async () => {
-    if (!selectedImage) return;
-    setUploading(true);
-    try {
-      const result = await testGeminiDirect(selectedImage);
-      Alert.alert('Gemini Result', result.substring(0, 500) + '...');
-    } catch (error: any) {
-      Alert.alert('Error', error.message);
-    } finally {
-      setUploading(false);
-    }
-  };
+
 
   const takePhoto = async () => {
     try {
@@ -119,7 +108,7 @@ const ScanScreen = () => {
 
   return (
     <ScreenWrapper>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: spacing.xxl * 2 }}>
+      <ScrollView showsVerticalScrollIndicator={true} contentContainerStyle={{ paddingBottom: spacing.xxl * 2 }}>
         <Title style={{ marginBottom: spacing.md }}>Scan Receipt</Title>
 
         {selectedImage ? (
@@ -169,16 +158,7 @@ const ScanScreen = () => {
             </TouchableOpacity>
           )}
 
-          {selectedImage && (
-            <TouchableOpacity
-              className={`bg-purple-600 rounded-xl items-center ${uploading ? 'opacity-50' : ''}`}
-              style={{ padding: spacing.md }}
-              onPress={handleDirectTest}
-              disabled={uploading}
-            >
-              <Text className="text-white text-lg font-semibold">Test Direct Gemini</Text>
-            </TouchableOpacity>
-          )}
+
         </View>
 
         {uploadError && (

@@ -1,12 +1,17 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, ScrollView, TouchableOpacity } from 'react-native';
 import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
+import { Ionicons } from '@expo/vector-icons';
 import { ScreenWrapper } from '../components/ui/ScreenWrapper';
 import { Title, Subtitle, Body, Caption } from '../components/ui/Typography';
 import { Card } from '../components/ui/Card';
+import { CategoryModal } from '../components/ui/CategoryModal';
 import { RootStackParamList } from '../navigation/AppNavigator';
-import { spacing } from '../utils/responsive';
+import { spacing, rfs } from '../utils/responsive';
+import { updateReceiptCategory } from '../api/receipts';
+import { ReceiptData } from '../api/receipts';
+import { sanitizeNumber } from '../utils/validation';
 
 type ReceiptDetailsRouteProp = RouteProp<RootStackParamList, 'ReceiptDetails'>;
 type ReceiptDetailsNavigationProp = StackNavigationProp<RootStackParamList, 'ReceiptDetails'>;
@@ -16,22 +21,65 @@ const ReceiptDetailsScreen = () => {
     const navigation = useNavigation<ReceiptDetailsNavigationProp>();
     const { receipt } = route.params;
 
-    // Format total value
-    let formattedTotal = '$0.00';
-    if (typeof receipt.total === 'number') {
-        formattedTotal = `$${receipt.total.toFixed(2)}`;
-    } else if (typeof receipt.total === 'string') {
-        const numericTotal = parseFloat(receipt.total.replace(/,/g, ''));
-        if (!isNaN(numericTotal)) {
-            formattedTotal = `$${numericTotal.toFixed(2)}`;
-        } else {
-            formattedTotal = receipt.total;
+    const [currentReceipt, setCurrentReceipt] = useState<ReceiptData>(receipt);
+    const [categoryModalVisible, setCategoryModalVisible] = useState(false);
+    const [isUpdating, setIsUpdating] = useState(false);
+
+    const handleCategoryUpdate = async (newCategory: string) => {
+        try {
+            setIsUpdating(true);
+            const receiptId = currentReceipt._id || currentReceipt.id;
+            if (!receiptId) throw new Error('No receipt ID');
+
+            const updated = await updateReceiptCategory(receiptId, newCategory);
+            setCurrentReceipt({ ...currentReceipt, category: newCategory });
+            setCategoryModalVisible(false);
+        } catch (error) {
+            console.error('Failed to update category:', error);
+            alert('Failed to update category');
+        } finally {
+            setIsUpdating(false);
         }
-    }
+    };
+
+    const getCategoryLabel = (category?: string): string => {
+        if (!category) return 'Uncategorized';
+        const labels: Record<string, string> = {
+            grocery: 'Grocery',
+            restaurant: 'Restaurant',
+            petrol: 'Petrol/Fuel',
+            pharmacy: 'Pharmacy',
+            electronics: 'Electronics',
+            food_delivery: 'Food Delivery',
+            parking: 'Parking',
+            toll: 'Toll',
+            general: 'General'
+        };
+        return labels[category] || category;
+    };
+
+    const getCategoryColor = (category?: string): string => {
+        if (!category) return '#757575';
+        const colors: Record<string, string> = {
+            grocery: '#4CAF50',
+            restaurant: '#FF9800',
+            petrol: '#2196F3',
+            pharmacy: '#E91E63',
+            electronics: '#9C27B0',
+            food_delivery: '#FF5722',
+            parking: '#607D8B',
+            toll: '#795548',
+            general: '#757575'
+        };
+        return colors[category] || '#757575';
+    };
+
+    const numericTotal = sanitizeNumber(currentReceipt.total);
+    const formattedTotal = `₹${numericTotal.toFixed(2)}`;
 
     return (
         <ScreenWrapper>
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: spacing.lg }}>
+            <ScrollView showsVerticalScrollIndicator={true} contentContainerStyle={{ paddingBottom: spacing.lg }}>
                 <View className="flex-row items-center" style={{ marginBottom: spacing.md }}>
                     <TouchableOpacity onPress={() => navigation.goBack()} className="mr-3">
                         <Body className="text-blue-600 text-lg">← Back</Body>
@@ -39,7 +87,6 @@ const ReceiptDetailsScreen = () => {
                     <Title className="mb-0">Receipt Details</Title>
                 </View>
 
-                {/* Store Info */}
                 <Card style={{ marginBottom: spacing.md }}>
                     <Subtitle className="mb-3">Store Information</Subtitle>
                     <View className="mb-2">
@@ -54,9 +101,37 @@ const ReceiptDetailsScreen = () => {
                         <Caption>Payment Method</Caption>
                         <Body className="font-semibold">{receipt.payment_method || 'Not specified'}</Body>
                     </View>
+                    <View>
+                        <Caption>Category</Caption>
+                        <TouchableOpacity
+                            onPress={() => setCategoryModalVisible(true)}
+                            style={{
+                                flexDirection: 'row',
+                                alignItems: 'center',
+                                backgroundColor: getCategoryColor(currentReceipt.category) + '20',
+                                paddingHorizontal: spacing.sm,
+                                paddingVertical: spacing.xs,
+                                borderRadius: spacing.sm,
+                                alignSelf: 'flex-start',
+                                marginTop: 4
+                            }}
+                        >
+                            <Body
+                                className="font-semibold"
+                                style={{ color: getCategoryColor(currentReceipt.category) }}
+                            >
+                                {getCategoryLabel(currentReceipt.category)}
+                            </Body>
+                            <Ionicons
+                                name="pencil"
+                                size={rfs(14)}
+                                color={getCategoryColor(currentReceipt.category)}
+                                style={{ marginLeft: spacing.xs }}
+                            />
+                        </TouchableOpacity>
+                    </View>
                 </Card>
 
-                {/* Total */}
                 <Card className="bg-blue-50 border-blue-200" style={{ marginBottom: spacing.md }}>
                     <View className="flex-row justify-between items-center">
                         <Subtitle className="mb-0 text-blue-800">Total Amount</Subtitle>
@@ -64,25 +139,14 @@ const ReceiptDetailsScreen = () => {
                     </View>
                 </Card>
 
-                {/* Items */}
                 <View style={{ marginBottom: spacing.sm }}>
                     <Subtitle className="mb-3">Items ({receipt.items?.length || 0})</Subtitle>
                 </View>
 
                 {receipt.items && receipt.items.length > 0 ? (
                     receipt.items.map((item, index) => {
-                        // Format item price
-                        let itemPrice = '$0.00';
-                        if (typeof item.price === 'number') {
-                            itemPrice = `$${item.price.toFixed(2)}`;
-                        } else if (typeof item.price === 'string') {
-                            const numericPrice = parseFloat(item.price.replace(/,/g, ''));
-                            if (!isNaN(numericPrice)) {
-                                itemPrice = `$${numericPrice.toFixed(2)}`;
-                            } else {
-                                itemPrice = item.price;
-                            }
-                        }
+                        const numericPrice = sanitizeNumber(item.price);
+                        const itemPrice = `₹${numericPrice.toFixed(2)}`;
 
                         return (
                             <Card key={index} style={{ marginBottom: spacing.sm }}>
@@ -102,6 +166,14 @@ const ReceiptDetailsScreen = () => {
                     </Card>
                 )}
             </ScrollView>
+
+            {/* Category Modal */}
+            <CategoryModal
+                visible={categoryModalVisible}
+                currentCategory={currentReceipt.category}
+                onSave={handleCategoryUpdate}
+                onCancel={() => setCategoryModalVisible(false)}
+            />
         </ScreenWrapper>
     );
 };

@@ -1,5 +1,6 @@
 import { Platform } from 'react-native';
 import api from './api';
+import { useAuthStore } from '../store/authStore';
 
 
 export interface ReceiptData {
@@ -90,13 +91,17 @@ export const uploadReceipt = async (imageUri: string): Promise<UploadReceiptResp
 
         console.log('[Receipts API] Uploading receipt:', filename);
 
+        // Get token from store
+        const token = useAuthStore.getState().token;
+
         // Use native fetch instead of axios for FormData reliability on Web
         const response = await fetch(`${api.defaults.baseURL}/receipts/upload_receipt`, {
             method: 'POST',
             body: formData,
             headers: {
                 // Let the browser set the Content-Type header with the boundary
-                // 'Content-Type': 'multipart/form-data', 
+                // 'Content-Type': 'multipart/form-data',
+                ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
             },
         });
 
@@ -138,11 +143,31 @@ export const updateReceipt = async (
         return response.data;
     } catch (error: any) {
         console.error('[Receipts API] Update failed:', error);
-        throw new Error(
-            error.response?.data?.detail ||
-            error.message ||
-            'Failed to update receipt'
-        );
+
+        // Extract detailed error message
+        let errorMessage = 'Failed to update receipt';
+
+        if (error.response?.data) {
+            // Handle different server response formats
+            if (typeof error.response.data === 'string') {
+                errorMessage = error.response.data;
+            } else if (error.response.data.detail) {
+                if (typeof error.response.data.detail === 'string') {
+                    errorMessage = error.response.data.detail;
+                } else if (Array.isArray(error.response.data.detail)) {
+                    // Handle validation errors from FastAPI
+                    errorMessage = error.response.data.detail.map((err: any) =>
+                        `${err.loc?.join('.')} - ${err.msg}`
+                    ).join(', ');
+                }
+            } else if (error.response.data.message) {
+                errorMessage = error.response.data.message;
+            }
+        } else if (error.message) {
+            errorMessage = error.message;
+        }
+
+        throw new Error(errorMessage);
     }
 };
 
@@ -168,10 +193,11 @@ export const getReceiptById = async (receiptId: string): Promise<ReceiptData> =>
  * Get all receipts
  * @returns List of receipts
  */
-export const getReceipts = async (): Promise<ReceiptData[]> => {
+export const getReceipts = async (page: number = 1, limit: number = 10): Promise<ReceiptData[]> => {
     try {
-        const response = await api.get<GetReceiptsResponse>('/receipts/receipts');
-        // Extract the receipts array from the paginated response
+        const response = await api.get<GetReceiptsResponse>('/receipts/receipts', {
+            params: { page, limit }
+        });
         return response.data.receipts || [];
     } catch (error: any) {
         throw new Error(
@@ -182,3 +208,77 @@ export const getReceipts = async (): Promise<ReceiptData[]> => {
     }
 };
 
+
+/**
+ * Update receipt category
+ * @param receiptId - Receipt ID
+ * @param category - New category value
+ * @returns Updated receipt
+ */
+export const updateReceiptCategory = async (
+    receiptId: string,
+    category: string
+): Promise<ReceiptData> => {
+    try {
+        console.log('[Receipts API] Updating receipt category:', receiptId, category);
+
+        const response = await api.patch<ReceiptData>(
+            `/receipts/receipt/${receiptId}/category`,
+            null,
+            {
+                params: { category }
+            }
+        );
+
+        console.log('[Receipts API] Category update successful');
+        return response.data;
+    } catch (error: any) {
+        console.error('[Receipts API] Category update failed:', error);
+        throw new Error(
+            error.response?.data?.detail ||
+            error.message ||
+            'Failed to update category'
+        );
+    }
+};
+
+/**
+ * Get spending by category with optional date range
+ * @param startDate - Optional start date (YYYY-MM-DD)
+ * @param endDate - Optional end date (YYYY-MM-DD)
+ * @returns List of category spending data
+ */
+export interface CategorySpending {
+    category: string;
+    total: number;
+    count: number;
+}
+
+export const getSpendingByCategory = async (
+    startDate?: string,
+    endDate?: string
+): Promise<CategorySpending[]> => {
+    try {
+        console.log('[Receipts API] Fetching spending by category');
+
+        const response = await api.get<{ data: CategorySpending[] }>(
+            '/analytics/spending_by_category',
+            {
+                params: {
+                    ...(startDate && { start_date: startDate }),
+                    ...(endDate && { end_date: endDate })
+                }
+            }
+        );
+
+        console.log('[Receipts API] Spending data retrieved:', response.data.data);
+        return response.data.data || [];
+    } catch (error: any) {
+        console.error('[Receipts API] Failed to fetch spending data:', error);
+        throw new Error(
+            error.response?.data?.detail ||
+            error.message ||
+            'Failed to fetch spending data'
+        );
+    }
+};

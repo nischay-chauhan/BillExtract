@@ -17,10 +17,24 @@ Format:
   "store_name": null,
   "date": null,
   "total": null,
+  "category": null,
   "items": [
     { "name": null, "quantity": null, "price": null }
   ]
 }
+
+For "category", choose the best fit from this list based on the store name and items:
+- grocery
+- restaurant
+- petrol
+- pharmacy
+- electronics
+- food_delivery
+- parking
+- toll
+- general
+
+If unsure, use "general".
 """
 
 def extract_receipt_data(image_bytes: bytes) -> dict:
