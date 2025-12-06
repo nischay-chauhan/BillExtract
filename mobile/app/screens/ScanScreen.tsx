@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, Image, ActivityIndicator, ScrollView, Ale
 import { ScreenWrapper } from '../components/ui/ScreenWrapper';
 import { Title, Body } from '../components/ui/Typography';
 import { Card } from '../components/ui/Card';
+import { ScanningModal } from '../components/ui/ScanningModal';
 
 import * as ImagePicker from 'expo-image-picker';
 import { useNavigation } from '@react-navigation/native';
@@ -163,6 +164,8 @@ const ScanScreen = () => {
           <Text className="text-red-500 text-center mt-4">{uploadError}</Text>
         )}
       </ScrollView>
+
+      <ScanningModal visible={uploading} status="Analyzing Receipt..." />
     </ScreenWrapper>
   );
 };
