@@ -18,6 +18,7 @@ Format:
   "date": "YYYY-MM-DD",
   "total": null,
   "category": null,
+  "payment_method": null,
   "items": [
     { "name": null, "quantity": null, "price": null }
   ]
@@ -37,6 +38,9 @@ For "category", choose the best fit from this list based on the store name and i
 - general
 
 If unsure, use "general".
+
+For "payment_method", extract the payment method if visible (e.g., "Cash", "Card", "UPI", "Credit Card", "Debit Card"). If not found, return null.
+
 """
 
 def extract_receipt_data(image_bytes: bytes) -> dict:

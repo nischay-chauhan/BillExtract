@@ -11,71 +11,46 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { CATEGORIES } from '../../types';
 import { wp, hp, rfs, spacing } from '../../utils/responsive';
 
-interface CategoryModalProps {
+interface PaymentMethodModalProps {
     visible: boolean;
-    currentCategory?: string;
-    onSave: (category: string) => void;
+    currentMethod?: string;
+    onSave: (method: string) => void;
     onCancel: () => void;
 }
 
-const getCategoryIcon = (category: string): keyof typeof Ionicons.glyphMap => {
+const PAYMENT_METHODS = [
+    'Cash',
+    'Card',
+    'UPI',
+    'Net Banking',
+    'Wallet',
+    'Other'
+];
+
+const getMethodIcon = (method: string): keyof typeof Ionicons.glyphMap => {
     const icons: Record<string, keyof typeof Ionicons.glyphMap> = {
-        grocery: 'cart',
-        restaurant: 'restaurant',
-        petrol: 'car',
-        pharmacy: 'medical',
-        electronics: 'phone-portrait',
-        food_delivery: 'bicycle',
-        parking: 'car',
-        toll: 'cash',
-        general: 'receipt'
+        'Cash': 'cash',
+        'Card': 'card',
+        'UPI': 'qr-code',
+        'Net Banking': 'globe',
+        'Wallet': 'wallet',
+        'Other': 'ellipsis-horizontal'
     };
-    return icons[category] || 'receipt';
+    return icons[method] || 'cash';
 };
 
-const getCategoryLabel = (category: string): string => {
-    const labels: Record<string, string> = {
-        grocery: 'Grocery',
-        restaurant: 'Restaurant',
-        petrol: 'Petrol/Fuel',
-        pharmacy: 'Pharmacy',
-        electronics: 'Electronics',
-        food_delivery: 'Food Delivery',
-        parking: 'Parking',
-        toll: 'Toll',
-        general: 'General'
-    };
-    return labels[category] || category;
-};
-
-const getCategoryColor = (category: string): string => {
-    const colors: Record<string, string> = {
-        grocery: '#4CAF50',
-        restaurant: '#FF9800',
-        petrol: '#2196F3',
-        pharmacy: '#E91E63',
-        electronics: '#9C27B0',
-        food_delivery: '#FF5722',
-        parking: '#607D8B',
-        toll: '#795548',
-        general: '#757575'
-    };
-    return colors[category] || '#757575';
-};
-
-export const CategoryModal: React.FC<CategoryModalProps> = ({
+export const PaymentMethodModal: React.FC<PaymentMethodModalProps> = ({
     visible,
-    currentCategory,
+    currentMethod,
     onSave,
     onCancel
 }) => {
-    const [selectedCategory, setSelectedCategory] = useState(currentCategory || 'general');
+    const [selectedMethod, setSelectedMethod] = useState(currentMethod || 'Cash');
 
     const handleSave = () => {
-        onSave(selectedCategory);
+        onSave(selectedMethod);
     };
 
     return (
@@ -91,51 +66,42 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({
                     style={styles.modalContainer}
                 >
                     <View style={styles.header}>
-                        <Text style={styles.title}>Select Category</Text>
+                        <Text style={styles.title}>Select Payment Method</Text>
                         <TouchableOpacity onPress={onCancel}>
                             <Ionicons name="close" size={rfs(24)} color="#fff" />
                         </TouchableOpacity>
                     </View>
 
-                    <ScrollView style={styles.categoriesList}>
-                        {CATEGORIES.map((category) => {
-                            const isSelected = selectedCategory === category;
-                            const color = getCategoryColor(category);
+                    <ScrollView style={styles.listContainer}>
+                        {PAYMENT_METHODS.map((method) => {
+                            const isSelected = selectedMethod === method;
 
                             return (
                                 <Pressable
-                                    key={category}
-                                    onPress={() => setSelectedCategory(category)}
+                                    key={method}
+                                    onPress={() => setSelectedMethod(method)}
                                     style={[
-                                        styles.categoryItem,
-                                        isSelected && {
-                                            backgroundColor: color + '20',
-                                            borderColor: color
-                                        }
+                                        styles.item,
+                                        isSelected && styles.itemSelected
                                     ]}
                                 >
-                                    <View style={styles.categoryLeft}>
-                                        <View
-                                            style={[
-                                                styles.iconContainer,
-                                                { backgroundColor: color }
-                                            ]}
-                                        >
+                                    <View style={styles.itemLeft}>
+                                        <View style={styles.iconContainer}>
                                             <Ionicons
-                                                name={getCategoryIcon(category)}
+                                                name={getMethodIcon(method)}
                                                 size={rfs(20)}
                                                 color="#fff"
                                             />
                                         </View>
-                                        <Text style={styles.categoryLabel}>
-                                            {getCategoryLabel(category)}
+                                        <Text style={styles.itemLabel}>
+                                            {method}
                                         </Text>
                                     </View>
                                     {isSelected && (
                                         <Ionicons
                                             name="checkmark-circle"
                                             size={rfs(24)}
-                                            color={color}
+                                            color="#4CAF50"
                                         />
                                     )}
                                 </Pressable>
@@ -181,7 +147,7 @@ const styles = StyleSheet.create({
         borderRadius: spacing.md,
         paddingTop: spacing.md,
         paddingBottom: spacing.md,
-        maxHeight: Platform.OS === 'web' ? '80%' : hp(70),
+        maxHeight: Platform.OS === 'web' ? '80%' : hp(60),
         width: Platform.OS === 'web' ? '90%' : '100%',
         maxWidth: 400,
         ...Platform.select({
@@ -202,11 +168,11 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
         color: '#fff'
     },
-    categoriesList: {
+    listContainer: {
         paddingHorizontal: spacing.md,
         marginBottom: spacing.sm
     },
-    categoryItem: {
+    item: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
@@ -214,10 +180,14 @@ const styles = StyleSheet.create({
         borderRadius: spacing.sm,
         marginBottom: spacing.xs,
         backgroundColor: 'rgba(255, 255, 255, 0.05)',
-        borderWidth: 2,
+        borderWidth: 1,
         borderColor: 'transparent'
     },
-    categoryLeft: {
+    itemSelected: {
+        backgroundColor: 'rgba(76, 175, 80, 0.1)',
+        borderColor: '#4CAF50'
+    },
+    itemLeft: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: spacing.sm
@@ -227,9 +197,10 @@ const styles = StyleSheet.create({
         height: spacing.lg,
         borderRadius: spacing.sm,
         justifyContent: 'center',
-        alignItems: 'center'
+        alignItems: 'center',
+        backgroundColor: 'rgba(255, 255, 255, 0.1)'
     },
-    categoryLabel: {
+    itemLabel: {
         fontSize: rfs(16),
         color: '#fff',
         fontWeight: '500'

@@ -9,9 +9,10 @@ import { Card } from '../components/ui/Card';
 import { CategoryModal } from '../components/ui/CategoryModal';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import { spacing, rfs } from '../utils/responsive';
-import { updateReceiptCategory } from '../api/receipts';
+import { updateReceiptCategory, updateReceipt } from '../api/receipts';
 import { ReceiptData } from '../api/receipts';
 import { sanitizeNumber } from '../utils/validation';
+import { PaymentMethodModal } from '../components/ui/PaymentMethodModal';
 
 type ReceiptDetailsRouteProp = RouteProp<RootStackParamList, 'ReceiptDetails'>;
 type ReceiptDetailsNavigationProp = StackNavigationProp<RootStackParamList, 'ReceiptDetails'>;
@@ -23,7 +24,25 @@ const ReceiptDetailsScreen = () => {
 
     const [currentReceipt, setCurrentReceipt] = useState<ReceiptData>(receipt);
     const [categoryModalVisible, setCategoryModalVisible] = useState(false);
+    const [paymentMethodModalVisible, setPaymentMethodModalVisible] = useState(false);
     const [isUpdating, setIsUpdating] = useState(false);
+
+    const handlePaymentMethodUpdate = async (newMethod: string) => {
+        try {
+            setIsUpdating(true);
+            const receiptId = currentReceipt._id || currentReceipt.id;
+            if (!receiptId) throw new Error('No receipt ID');
+
+            const updated = await updateReceipt(receiptId, { payment_method: newMethod });
+            setCurrentReceipt({ ...currentReceipt, payment_method: newMethod });
+            setPaymentMethodModalVisible(false);
+        } catch (error) {
+            console.error('Failed to update payment method:', error);
+            alert('Failed to update payment method');
+        } finally {
+            setIsUpdating(false);
+        }
+    };
 
     const handleCategoryUpdate = async (newCategory: string) => {
         try {
@@ -77,6 +96,14 @@ const ReceiptDetailsScreen = () => {
     const numericTotal = sanitizeNumber(currentReceipt.total);
     const formattedTotal = `₹${numericTotal.toFixed(2)}`;
 
+    // Calculate total from items
+    const itemsTotal = (currentReceipt.items || []).reduce((sum, item) => {
+        return sum + (sanitizeNumber(item.price) * sanitizeNumber(item.quantity));
+    }, 0);
+
+    // Check if total matches (allowing for small floating point differences)
+    const isTotalMismatch = Math.abs(numericTotal - itemsTotal) > 0.1 && itemsTotal > 0;
+
     return (
         <ScreenWrapper>
             <ScrollView showsVerticalScrollIndicator={true} contentContainerStyle={{ paddingBottom: spacing.lg }}>
@@ -99,7 +126,24 @@ const ReceiptDetailsScreen = () => {
                     </View>
                     <View>
                         <Caption>Payment Method</Caption>
-                        <Body className="font-semibold">{receipt.payment_method || 'Not specified'}</Body>
+                        <TouchableOpacity
+                            onPress={() => setPaymentMethodModalVisible(true)}
+                            style={{
+                                flexDirection: 'row',
+                                alignItems: 'center',
+                                backgroundColor: '#f5f5f5',
+                                paddingHorizontal: spacing.sm,
+                                paddingVertical: spacing.xs,
+                                borderRadius: spacing.sm,
+                                alignSelf: 'flex-start',
+                                marginTop: 4
+                            }}
+                        >
+                            <Body className="font-semibold" style={{ marginRight: spacing.xs }}>
+                                {currentReceipt.payment_method || 'Not specified'}
+                            </Body>
+                            <Ionicons name="pencil" size={rfs(14)} color="#757575" />
+                        </TouchableOpacity>
                     </View>
                     <View>
                         <Caption>Category</Caption>
@@ -131,6 +175,18 @@ const ReceiptDetailsScreen = () => {
                         </TouchableOpacity>
                     </View>
                 </Card>
+
+                {isTotalMismatch && (
+                    <Card className="bg-red-50 border-red-200" style={{ marginBottom: spacing.md }}>
+                        <View className="flex-row items-center mb-2">
+                            <Ionicons name="warning" size={rfs(20)} color="#D32F2F" style={{ marginRight: spacing.sm }} />
+                            <Subtitle className="text-red-800 mb-0">Total Mismatch Detected</Subtitle>
+                        </View>
+                        <Body className="text-red-700">
+                            The receipt total (₹{numericTotal.toFixed(2)}) does not match the sum of items (₹{itemsTotal.toFixed(2)}).
+                        </Body>
+                    </Card>
+                )}
 
                 <Card className="bg-blue-50 border-blue-200" style={{ marginBottom: spacing.md }}>
                     <View className="flex-row justify-between items-center">
@@ -174,7 +230,15 @@ const ReceiptDetailsScreen = () => {
                 onSave={handleCategoryUpdate}
                 onCancel={() => setCategoryModalVisible(false)}
             />
-        </ScreenWrapper>
+
+            {/* Payment Method Modal */}
+            <PaymentMethodModal
+                visible={paymentMethodModalVisible}
+                currentMethod={currentReceipt.payment_method}
+                onSave={handlePaymentMethodUpdate}
+                onCancel={() => setPaymentMethodModalVisible(false)}
+            />
+        </ScreenWrapper >
     );
 };
 

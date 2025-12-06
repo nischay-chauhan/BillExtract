@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
-import { View, ScrollView, TouchableOpacity, Text, ActivityIndicator } from "react-native";
+import { View, ScrollView, TouchableOpacity, Text, ActivityIndicator, Platform } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { PieChart, BarChart } from "react-native-gifted-charts";
+import DateTimePicker from '@react-native-community/datetimepicker';
 
 import { ScreenWrapper } from "../components/ui/ScreenWrapper";
 import { Title, Subtitle, Body, Caption } from "../components/ui/Typography";
@@ -9,17 +10,29 @@ import { Card } from "../components/ui/Card";
 import { wp, hp, spacing, isSmallDevice, rfs } from "../utils/responsive";
 import { getSpendingByCategory } from "../api/receipts";
 
-type DateRange = "week" | "month" | "year";
+type DateRange = "week" | "month" | "year" | "custom";
 
 const AnalyticsScreen = () => {
   const [dateRange, setDateRange] = useState<DateRange>("month");
+  const [customStartDate, setCustomStartDate] = useState(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000));
+  const [customEndDate, setCustomEndDate] = useState(new Date());
+  const [showDatePicker, setShowDatePicker] = useState<"start" | "end" | null>(null);
   const [categoryData, setCategoryData] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     fetchAnalytics();
-  }, [dateRange]);
+  }, [dateRange, customStartDate, customEndDate]);
+
+  const onDateChange = (event: any, selectedDate?: Date) => {
+    const type = showDatePicker;
+    setShowDatePicker(null);
+    if (selectedDate && type) {
+      if (type === 'start') setCustomStartDate(selectedDate);
+      if (type === 'end') setCustomEndDate(selectedDate);
+    }
+  };
 
   const fetchAnalytics = async () => {
     try {
@@ -28,14 +41,19 @@ const AnalyticsScreen = () => {
 
       const now = new Date();
       let startDate = new Date();
+      let endDate = new Date();
 
       if (dateRange === "week") startDate = new Date(now.getTime() - 7 * 86400000);
       if (dateRange === "month") startDate = new Date(now.getTime() - 30 * 86400000);
       if (dateRange === "year") startDate = new Date(now.getTime() - 365 * 86400000);
+      if (dateRange === "custom") {
+        startDate = customStartDate;
+        endDate = customEndDate;
+      }
 
       const data = await getSpendingByCategory(
         startDate.toISOString().split("T")[0],
-        now.toISOString().split("T")[0]
+        endDate.toISOString().split("T")[0]
       );
 
       setCategoryData(data);
@@ -80,8 +98,6 @@ const AnalyticsScreen = () => {
     value: item.total,
     color: getCategoryColor(item.category),
     text: `₹${item.total.toFixed(0)}`,
-    shiftTextX: -10,
-    shiftTextY: -10,
   }));
 
   const barData = categoryData.slice(0, 5).map(item => ({
@@ -90,10 +106,12 @@ const AnalyticsScreen = () => {
     frontColor: '#6366f1',
     topLabelComponent: () => (
       <Text style={{ color: '#6366f1', fontSize: 10, marginBottom: 4 }}>
-        ₹${item.total.toFixed(0)}
+        ₹{item.total.toFixed(0)}
       </Text>
     ),
   }));
+
+  const maxBarValue = Math.max(...barData.map(item => item.value), 0);
 
   return (
     <ScreenWrapper>
@@ -109,12 +127,12 @@ const AnalyticsScreen = () => {
               <View
                 style={{
                   flexDirection: "row",
-                  backgroundColor: "rgba(255,255,255,0.1)",
+                  backgroundColor: "rgba(0,0,0,0.05)",
                   borderRadius: 8,
                   padding: 4,
                 }}
               >
-                {(["week", "month", "year"] as DateRange[]).map((range) => (
+                {(["week", "month", "year", "custom"] as DateRange[]).map((range) => (
                   <TouchableOpacity
                     key={range}
                     onPress={() => setDateRange(range)}
@@ -128,21 +146,67 @@ const AnalyticsScreen = () => {
                     <Text
                       style={{
                         textAlign: "center",
-                        color: "#fff",
+                        color: dateRange === range ? "#fff" : "#4b5563",
                         fontWeight: dateRange === range ? "600" : "400",
+                        fontSize: 12,
                       }}
                     >
-                      Last{" "}
                       {range === "week"
                         ? "7 Days"
                         : range === "month"
                           ? "30 Days"
-                          : "Year"}
+                          : range === "year"
+                            ? "Year"
+                            : "Custom"}
                     </Text>
                   </TouchableOpacity>
                 ))}
               </View>
             </View>
+
+            {dateRange === "custom" && (
+              <View style={{ flexDirection: "row", gap: spacing.md, marginTop: spacing.sm }}>
+                <TouchableOpacity
+                  onPress={() => setShowDatePicker("start")}
+                  style={{
+                    flex: 1,
+                    backgroundColor: "rgba(255,255,255,0.05)",
+                    padding: spacing.sm,
+                    borderRadius: spacing.sm,
+                    borderWidth: 1,
+                    borderColor: "rgba(255,255,255,0.1)",
+                  }}
+                >
+                  <Caption style={{ color: "gray" }}>From</Caption>
+                  <Body>{customStartDate.toLocaleDateString()}</Body>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  onPress={() => setShowDatePicker("end")}
+                  style={{
+                    flex: 1,
+                    backgroundColor: "rgba(255,255,255,0.05)",
+                    padding: spacing.sm,
+                    borderRadius: spacing.sm,
+                    borderWidth: 1,
+                    borderColor: "rgba(255,255,255,0.1)",
+                  }}
+                >
+                  <Caption style={{ color: "gray" }}>To</Caption>
+                  <Body>{customEndDate.toLocaleDateString()}</Body>
+                </TouchableOpacity>
+              </View>
+            )}
+
+            {showDatePicker && (
+              <DateTimePicker
+                value={showDatePicker === "start" ? customStartDate : customEndDate}
+                mode="date"
+                display={Platform.OS === "ios" ? "spinner" : "default"}
+                onChange={onDateChange}
+                maximumDate={new Date()}
+              />
+            )}
             {loading && (
               <View style={{ padding: spacing.xl, alignItems: "center" }}>
                 <ActivityIndicator size="large" color="#6366f1" />
@@ -242,6 +306,7 @@ const AnalyticsScreen = () => {
                       height={200}
                       labelWidth={40}
                       xAxisLabelTextStyle={{ color: 'gray', fontSize: 10 }}
+                      maxValue={maxBarValue * 1.2}
                     />
                   </View>
                 </Card>
@@ -279,8 +344,8 @@ const AnalyticsScreen = () => {
             )}
           </ScrollView>
         </View>
-      </View>
-    </ScreenWrapper>
+      </View >
+    </ScreenWrapper >
   );
 };
 

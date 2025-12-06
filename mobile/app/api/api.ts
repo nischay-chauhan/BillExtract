@@ -5,7 +5,9 @@ import { Platform } from 'react-native';
 // For physical devices, replace with your computer's IP address
 const getBaseUrl = () => {
     // EC2 Instance URL
-    return 'http://3.109.185.58:8001';
+    // return 'http://3.109.185.58:8001';
+    // Local IP
+    return 'http://192.168.18.5:8000';
 };
 
 const BASE_URL = getBaseUrl();

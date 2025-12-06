@@ -4,7 +4,38 @@ import { StatusBar } from 'expo-status-bar';
 import { useFonts, Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold } from '@expo-google-fonts/inter';
 import AppNavigator from './app/navigation/AppNavigator';
 import { View, ActivityIndicator } from 'react-native';
-import Toast from 'react-native-toast-message';
+import Toast, { BaseToast, ErrorToast } from 'react-native-toast-message';
+
+const toastConfig = {
+  success: (props: any) => (
+    <BaseToast
+      {...props}
+      style={{ borderLeftColor: '#10b981' }}
+      contentContainerStyle={{ paddingHorizontal: 15 }}
+      text1Style={{
+        fontSize: 16,
+        fontWeight: '600',
+      }}
+      text2Style={{
+        fontSize: 14,
+      }}
+    />
+  ),
+  error: (props: any) => (
+    <ErrorToast
+      {...props}
+      style={{ borderLeftColor: '#ef4444' }}
+      contentContainerStyle={{ paddingHorizontal: 15 }}
+      text1Style={{
+        fontSize: 16,
+        fontWeight: '600',
+      }}
+      text2Style={{
+        fontSize: 14,
+      }}
+    />
+  ),
+};
 
 export default function App() {
   let [fontsLoaded] = useFonts({
@@ -26,7 +57,7 @@ export default function App() {
     <>
       <AppNavigator />
       <StatusBar style="auto" />
-      <Toast />
+      <Toast config={toastConfig} />
     </>
   );
 }

@@ -79,11 +79,10 @@ const HomeScreen = () => {
             }}
           >
             <Caption className="text-purple-100">Total Spent</Caption>
-            <Title className="text-white mt-1 mb-0" style={{ fontSize: 18 }}>{formatCompactNumber(totalSpent)}</Title>
+            <Title className="text-white mt-1 mb-0" style={{ fontSize: 24 }}>{formatCompactNumber(totalSpent)}</Title>
             <Caption className="text-purple-200 mt-2">{receipts.length} receipts</Caption>
           </LinearGradient>
 
-          {/* Blue Gradient Card - Bills Scanned */}
           <LinearGradient
             colors={['#2563eb', '#1d4ed8']}
             start={{ x: 0, y: 0 }}
@@ -117,7 +116,7 @@ const HomeScreen = () => {
                 activeOpacity={0.7}
               >
                 <Card className="flex-row items-center justify-between" style={{ marginBottom: spacing.sm }}>
-                  <View className="flex-row items-center">
+                  <View className="flex-row items-center flex-1" style={{ marginRight: spacing.sm }}>
                     <View
                       className="bg-blue-100 rounded-full items-center justify-center"
                       style={{
@@ -128,8 +127,14 @@ const HomeScreen = () => {
                     >
                       <Body className="text-lg">🧾</Body>
                     </View>
-                    <View>
-                      <Subtitle className="text-base mb-0">{receipt.store_name || 'Unknown Store'}</Subtitle>
+                    <View style={{ flex: 1 }}>
+                      <Subtitle
+                        className="text-base mb-0"
+                        numberOfLines={1}
+                        ellipsizeMode="tail"
+                      >
+                        {receipt.store_name || 'Unknown Store'}
+                      </Subtitle>
                       <Caption>{receipt.date || 'No date'}</Caption>
                     </View>
                   </View>

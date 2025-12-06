@@ -12,6 +12,9 @@ import Toast from 'react-native-toast-message';
 import { ScreenWrapper } from '../components/ui/ScreenWrapper';
 import { Title, Subtitle, Body, Caption } from '../components/ui/Typography';
 import { Card } from '../components/ui/Card';
+import { CategoryModal } from '../components/ui/CategoryModal';
+import { PaymentMethodModal } from '../components/ui/PaymentMethodModal';
+import { Ionicons } from '@expo/vector-icons';
 
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
@@ -29,11 +32,15 @@ const ReviewReceiptScreen = () => {
 
     const { receiptData, receiptId, confidence, status } = route.params;
 
-    // State for editable fields
     const [storeName, setStoreName] = useState(receiptData.store_name || '');
     const [date, setDate] = useState(receiptData.date || '');
     const [total, setTotal] = useState(receiptData.total?.toString() || '0.00');
+    const [category, setCategory] = useState(receiptData.category || 'general');
+    const [paymentMethod, setPaymentMethod] = useState(receiptData.payment_method || 'Cash');
     const [items, setItems] = useState<ReceiptItem[]>(receiptData.items || []);
+
+    const [categoryModalVisible, setCategoryModalVisible] = useState(false);
+    const [paymentMethodModalVisible, setPaymentMethodModalVisible] = useState(false);
     const [saving, setSaving] = useState(false);
 
     const handleAddItem = () => {
@@ -67,6 +74,12 @@ const ReviewReceiptScreen = () => {
             total: total,
             items: items
         });
+
+        // Add category and payment method to sanitized data
+        if (validationResult.isValid && validationResult.sanitizedData) {
+            validationResult.sanitizedData.category = category;
+            validationResult.sanitizedData.payment_method = paymentMethod;
+        }
 
         if (!validationResult.isValid) {
             // Show first error via toast
@@ -129,7 +142,11 @@ const ReviewReceiptScreen = () => {
 
     return (
         <ScreenWrapper>
-            <ScrollView showsVerticalScrollIndicator={true} contentContainerStyle={{ paddingBottom: spacing.xxl * 3 }}>
+            <ScrollView
+                showsVerticalScrollIndicator={true}
+                contentContainerStyle={{ paddingBottom: spacing.xxl * 3 }}
+                style={{ flex: 1 }}
+            >
                 <Title>Review Receipt</Title>
 
                 <View style={{ marginBottom: spacing.md }}>
@@ -166,6 +183,31 @@ const ReviewReceiptScreen = () => {
                         keyboardType="decimal-pad"
                         placeholderTextColor="#9CA3AF"
                     />
+                </View>
+
+                <View style={{ marginBottom: spacing.md, flexDirection: 'row', gap: spacing.md }}>
+                    <View style={{ flex: 1 }}>
+                        <Subtitle style={{ marginBottom: spacing.sm }}>Category</Subtitle>
+                        <TouchableOpacity
+                            onPress={() => setCategoryModalVisible(true)}
+                            className="bg-white border border-gray-200 rounded-xl flex-row items-center justify-between"
+                            style={{ padding: spacing.sm }}
+                        >
+                            <Body className="text-gray-900 capitalize">{category.replace('_', ' ')}</Body>
+                            <Ionicons name="chevron-down" size={rfs(16)} color="#9CA3AF" />
+                        </TouchableOpacity>
+                    </View>
+                    <View style={{ flex: 1 }}>
+                        <Subtitle style={{ marginBottom: spacing.sm }}>Payment</Subtitle>
+                        <TouchableOpacity
+                            onPress={() => setPaymentMethodModalVisible(true)}
+                            className="bg-white border border-gray-200 rounded-xl flex-row items-center justify-between"
+                            style={{ padding: spacing.sm }}
+                        >
+                            <Body className="text-gray-900">{paymentMethod}</Body>
+                            <Ionicons name="chevron-down" size={rfs(16)} color="#9CA3AF" />
+                        </TouchableOpacity>
+                    </View>
                 </View>
 
                 <View>
@@ -246,6 +288,26 @@ const ReviewReceiptScreen = () => {
                     )}
                 </TouchableOpacity>
             </View>
+
+            <CategoryModal
+                visible={categoryModalVisible}
+                currentCategory={category}
+                onSave={(newCategory) => {
+                    setCategory(newCategory);
+                    setCategoryModalVisible(false);
+                }}
+                onCancel={() => setCategoryModalVisible(false)}
+            />
+
+            <PaymentMethodModal
+                visible={paymentMethodModalVisible}
+                currentMethod={paymentMethod}
+                onSave={(newMethod) => {
+                    setPaymentMethod(newMethod);
+                    setPaymentMethodModalVisible(false);
+                }}
+                onCancel={() => setPaymentMethodModalVisible(false)}
+            />
         </ScreenWrapper>
     );
 };
