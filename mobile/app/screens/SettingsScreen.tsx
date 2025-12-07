@@ -10,23 +10,57 @@ import { wp, hp, spacing, isSmallDevice, rfs } from '../utils/responsive';
 import { useAuthStore } from '../store/authStore';
 import { getReceipts } from '../api/receipts';
 import { generateReceiptsHTML } from '../utils/pdfGenerator';
+import { usePushNotifications, scheduleLocalNotification } from '../hooks/usePushNotifications';
+import { sendTestNotification } from '../api/notifications';
+
 
 type SettingsItem = {
   icon: string;
   label: string;
   value: boolean | string | null;
-  toggle?: React.Dispatch<React.SetStateAction<boolean>>;
+  toggle?: ((value: boolean) => void) | ((value: boolean) => Promise<void>);
   action?: () => void;
 };
 
 const SettingsScreen = () => {
-  const [notifications, setNotifications] = React.useState(true);
-  const [darkMode, setDarkMode] = React.useState(false);
   const [autoSync, setAutoSync] = React.useState(true);
   const [isExporting, setIsExporting] = useState(false);
   const [showExportOptions, setShowExportOptions] = useState(false);
 
   const { user, logout } = useAuthStore();
+  const { isRegistered, registerForPushNotifications, unregister, expoPushToken } = usePushNotifications();
+
+  const [notificationsEnabled, setNotificationsEnabled] = useState(isRegistered);
+
+  const handleNotificationToggle = async (value: boolean) => {
+    setNotificationsEnabled(value);
+    if (value) {
+      await registerForPushNotifications();
+    } else {
+      await unregister();
+    }
+  };
+
+  const handleTestNotification = async () => {
+    try {
+      if (expoPushToken) {
+        // Send via backend
+        await sendTestNotification();
+        Alert.alert('Sent!', 'Test notification sent via server.');
+      } else {
+        // Local notification for testing
+        await scheduleLocalNotification(
+          'Test Notification 🔔',
+          'This is a local test notification!',
+          { type: 'test' },
+          2
+        );
+        Alert.alert('Scheduled!', 'Local notification will appear in 2 seconds.');
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Failed to send test notification.');
+    }
+  };
 
   const handleLogout = () => {
     Alert.alert(
@@ -71,7 +105,6 @@ const SettingsScreen = () => {
     let webWindow: any = null;
 
     try {
-      // On Web, open the window immediately to avoid popup blockers and isolate print context
       if (Platform.OS === 'web') {
         webWindow = window.open('', '_blank');
         if (!webWindow) {
@@ -83,7 +116,6 @@ const SettingsScreen = () => {
 
       setIsExporting(true);
 
-      // 1. Fetch receipts
       const receipts = await getReceipts(1, limit);
 
       if (receipts.length === 0) {
@@ -134,8 +166,8 @@ const SettingsScreen = () => {
     {
       title: 'Preferences',
       items: [
-        { icon: '🔔', label: 'Notifications', value: notifications, toggle: setNotifications },
-        { icon: '🌙', label: 'Dark Mode', value: darkMode, toggle: setDarkMode },
+        { icon: '🔔', label: 'Notifications', value: notificationsEnabled, toggle: handleNotificationToggle },
+        { icon: '📲', label: 'Test Notification', value: null, action: handleTestNotification },
         { icon: '🔄', label: 'Auto Sync', value: autoSync, toggle: setAutoSync },
       ],
     },

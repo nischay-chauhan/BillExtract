@@ -1,10 +1,11 @@
 import './global.css';
-import React from 'react';
+import React, { useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { useFonts, Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold } from '@expo-google-fonts/inter';
 import AppNavigator from './app/navigation/AppNavigator';
 import { View, ActivityIndicator } from 'react-native';
 import Toast, { BaseToast, ErrorToast } from 'react-native-toast-message';
+import { usePushNotifications } from './app/hooks/usePushNotifications';
 
 const toastConfig = {
   success: (props: any) => (
@@ -37,6 +38,22 @@ const toastConfig = {
   ),
 };
 
+function NotificationInitializer() {
+  // Initialize push notifications
+  const { expoPushToken, error, isRegistered } = usePushNotifications();
+
+  useEffect(() => {
+    if (expoPushToken) {
+      console.log('[App] Push token:', expoPushToken);
+    }
+    if (error) {
+      console.warn('[App] Push notification error:', error);
+    }
+  }, [expoPushToken, error]);
+
+  return null;
+}
+
 export default function App() {
   let [fontsLoaded] = useFonts({
     Inter_400Regular,
@@ -55,9 +72,11 @@ export default function App() {
 
   return (
     <>
+      <NotificationInitializer />
       <AppNavigator />
       <StatusBar style="auto" />
       <Toast config={toastConfig} />
     </>
   );
 }
+

@@ -12,7 +12,10 @@ export const ScreenWrapper: React.FC<ScreenWrapperProps> = ({ children, classNam
 
     return (
         <SafeAreaView className="flex-1 bg-gray-50">
-            <StatusBar barStyle="dark-content" backgroundColor="#F9FAFB" />
+            <StatusBar
+                barStyle="dark-content"
+                backgroundColor="#F9FAFB"
+            />
             <View
                 className={`${className} flex-1`}
                 style={[

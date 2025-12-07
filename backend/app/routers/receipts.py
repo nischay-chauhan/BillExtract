@@ -1,6 +1,6 @@
 from fastapi import APIRouter, UploadFile, File, HTTPException, Query, Depends
 from app.services.gemini_service import extract_receipt_data
-from app.services.receipts_service import save_receipt, get_receipt_by_id, get_all_receipts, update_receipt
+from app.services.receipts_service import save_receipt, get_receipt_by_id, get_all_receipts, update_receipt, delete_receipt
 from app.services.category_service import CategoryService
 from pydantic import BaseModel
 from typing import Optional, List
@@ -212,3 +212,35 @@ async def update_receipt_category(
     except Exception as e:
         logger.error(f"Failed to update category: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to update category: {str(e)}")
+
+
+@router.delete("/receipt/{id}")
+async def delete_receipt_endpoint(
+    id: str,
+    token_data: TokenData = Depends(get_current_user)
+):
+    """
+    Delete a receipt by ID. Requires authentication.
+    Only the owner of the receipt can delete it.
+    """
+    user = await get_user_by_email(token_data.email)
+    if not user:
+        raise HTTPException(status_code=401, detail="User not found")
+    
+    logger.info(f"User {user.email} deleting receipt: {id}")
+    
+    try:
+        deleted = await delete_receipt(id, user.id)
+        
+        if not deleted:
+            logger.warning(f"Receipt not found or access denied: {id} for user {user.email}")
+            raise HTTPException(status_code=404, detail="Receipt not found")
+        
+        logger.info(f"Receipt deleted successfully: {id}")
+        return {"message": "Receipt deleted successfully", "id": id}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to delete receipt: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to delete receipt: {str(e)}")
+

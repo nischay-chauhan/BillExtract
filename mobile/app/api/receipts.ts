@@ -282,3 +282,33 @@ export const getSpendingByCategory = async (
         );
     }
 };
+
+/**
+ * Delete a receipt by ID
+ * @param receiptId - Receipt ID to delete
+ * @returns Success message
+ */
+export const deleteReceipt = async (receiptId: string): Promise<{ message: string; id: string }> => {
+    try {
+        console.log('[Receipts API] Deleting receipt:', receiptId);
+
+        const response = await api.delete<{ message: string; id: string }>(
+            `/receipts/receipt/${receiptId}`
+        );
+
+        console.log('[Receipts API] Delete successful');
+        return response.data;
+    } catch (error: any) {
+        console.error('[Receipts API] Delete failed:', error);
+
+        let errorMessage = 'Failed to delete receipt';
+        if (error.response?.data?.detail) {
+            errorMessage = error.response.data.detail;
+        } else if (error.message) {
+            errorMessage = error.message;
+        }
+
+        throw new Error(errorMessage);
+    }
+};
+
