@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { View, FlatList, ActivityIndicator, RefreshControl, TouchableOpacity, Text, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -7,7 +7,7 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import { ScreenWrapper } from '../components/ui/ScreenWrapper';
 import { Title, Subtitle, Caption, Body } from '../components/ui/Typography';
 import { Card } from '../components/ui/Card';
-import { getReceipts, ReceiptData } from '../api/receipts';
+import { getReceipts, ReceiptData, getCachedReceipts, invalidateReceiptsCache } from '../api/receipts';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import { spacing } from '../utils/responsive';
 import { formatDate } from '../utils/format';
@@ -17,8 +17,8 @@ type ReceiptsScreenNavigationProp = StackNavigationProp<RootStackParamList>;
 
 const ReceiptsScreen = () => {
   const navigation = useNavigation<ReceiptsScreenNavigationProp>();
-  const [receipts, setReceipts] = useState<ReceiptData[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [receipts, setReceipts] = useState<ReceiptData[]>(getCachedReceipts() || []);
+  const [loading, setLoading] = useState(!getCachedReceipts());
   const [refreshing, setRefreshing] = useState(false);
   const [sortBy, setSortBy] = useState<'date' | 'amount'>('date');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
@@ -40,14 +40,13 @@ const ReceiptsScreen = () => {
     }
   };
 
-  useFocusEffect(
-    useCallback(() => {
-      fetchReceipts();
-    }, [])
-  );
+  useEffect(() => {
+    fetchReceipts();
+  }, []);
 
   const onRefresh = () => {
     setRefreshing(true);
+    invalidateReceiptsCache();
     fetchReceipts();
   };
 

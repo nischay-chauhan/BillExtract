@@ -19,7 +19,7 @@ import Svg, { Defs, LinearGradient as SvgGradient, Stop, Rect } from 'react-nati
 import { ScreenWrapper } from "../components/ui/ScreenWrapper";
 import { Title, Subtitle, Body, Caption } from "../components/ui/Typography";
 import { wp, hp, spacing, isSmallDevice } from "../utils/responsive";
-import { getSpendingByCategory } from "../api/receipts";
+import { getSpendingByCategory, getCachedSpending } from "../api/receipts";
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -173,10 +173,18 @@ const AnalyticsScreen = () => {
         endDate = customEndDate;
       }
 
-      const data = await getSpendingByCategory(
-        startDate.toISOString().split("T")[0],
-        endDate.toISOString().split("T")[0]
-      );
+      const startStr = startDate.toISOString().split("T")[0];
+      const endStr = endDate.toISOString().split("T")[0];
+
+      // Check cache to avoid loading spinner if data is available
+      const cached = getCachedSpending(startStr, endStr);
+      if (!cached) {
+        setLoading(true);
+      }
+
+      setError(null);
+
+      const data = await getSpendingByCategory(startStr, endStr);
 
       setCategoryData(data);
     } catch (err: any) {

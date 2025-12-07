@@ -1,9 +1,9 @@
 import React, { useEffect } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { createMaterialTopTabNavigator } from '@react-navigation/material-top-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
 import { Ionicons } from '@expo/vector-icons';
-import { Platform, View, ActivityIndicator } from 'react-native';
+import { Platform, View, ActivityIndicator, TouchableOpacity, Text } from 'react-native';
 
 import HomeScreen from '../screens/HomeScreen';
 import ScanScreen from '../screens/ScanScreen';
@@ -44,7 +44,7 @@ export type MainTabParamList = {
 };
 
 const Stack = createStackNavigator<RootStackParamList>();
-const Tab = createBottomTabNavigator<MainTabParamList>();
+const Tab = createMaterialTopTabNavigator<MainTabParamList>();
 const AuthStack = createStackNavigator<RootStackParamList>();
 
 const AuthNavigator = () => {
@@ -56,89 +56,104 @@ const AuthNavigator = () => {
   );
 };
 
+
+
+// Tab configuration for the swipeable view
+const TAB_CONFIG = [
+  { name: 'Home', icon: 'home', iconOutline: 'home-outline' },
+  { name: 'Scan', icon: 'scan', iconOutline: 'scan-outline' },
+  { name: 'Receipts', icon: 'receipt', iconOutline: 'receipt-outline' },
+  { name: 'Analytics', icon: 'stats-chart', iconOutline: 'stats-chart-outline' },
+  { name: 'Settings', icon: 'settings', iconOutline: 'settings-outline' },
+] as const;
+
 const MainTabNavigator = () => {
   return (
     <Tab.Navigator
-      screenOptions={({ route }) => ({
-        tabBarIcon: ({ focused, color, size }) => {
-          let iconName: keyof typeof Ionicons.glyphMap;
+      tabBarPosition="bottom"
+      screenOptions={{
+        swipeEnabled: true,
+        animationEnabled: true,
+      }}
+      tabBar={({ state, descriptors, navigation }) => (
+        <View
+          style={{
+            flexDirection: 'row',
+            backgroundColor: '#FFFFFF',
+            borderTopWidth: 0,
+            elevation: 20,
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: -3 },
+            shadowOpacity: 0.1,
+            shadowRadius: 8,
+            height: Platform.OS === 'ios' ? 88 : 65,
+            paddingBottom: Platform.OS === 'ios' ? 20 : 10,
+            paddingTop: 10,
+          }}
+        >
+          {state.routes.map((route, index) => {
+            const { options } = descriptors[route.key];
+            const isFocused = state.index === index;
+            const tabConfig = TAB_CONFIG.find(t => t.name === route.name);
 
-          if (route.name === 'Home') {
-            iconName = focused ? 'home' : 'home-outline';
-          } else if (route.name === 'Scan') {
-            iconName = focused ? 'scan' : 'scan-outline';
-          } else if (route.name === 'Receipts') {
-            iconName = focused ? 'receipt' : 'receipt-outline';
-          } else if (route.name === 'Analytics') {
-            iconName = focused ? 'stats-chart' : 'stats-chart-outline';
-          } else if (route.name === 'Settings') {
-            iconName = focused ? 'settings' : 'settings-outline';
-          } else {
-            iconName = 'help-outline';
-          }
+            if (!tabConfig) return null;
 
-          return <Ionicons name={iconName} size={size} color={color} />;
-        },
-        tabBarActiveTintColor: '#5B21B6',
-        tabBarInactiveTintColor: '#94A3B8',
-        headerShown: false,
-        tabBarStyle: {
-          backgroundColor: '#FFFFFF',
-          borderTopWidth: 0,
-          elevation: 20,
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: -3 },
-          shadowOpacity: 0.1,
-          shadowRadius: 8,
-          height: Platform.OS === 'ios' ? 88 : 65,
-          paddingBottom: Platform.OS === 'ios' ? 20 : 10,
-          paddingTop: 10,
-        },
-        tabBarLabelStyle: {
-          fontSize: 12,
-          fontWeight: '600',
-        },
-        tabBarHideOnKeyboard: true,
-      })}
+            const iconName = isFocused ? tabConfig.icon : tabConfig.iconOutline;
+            const color = isFocused ? '#5B21B6' : '#94A3B8';
+
+            const onPress = () => {
+              const event = navigation.emit({
+                type: 'tabPress',
+                target: route.key,
+                canPreventDefault: true,
+              });
+
+              if (!isFocused && !event.defaultPrevented) {
+                navigation.navigate(route.name);
+              }
+            };
+
+            return (
+              <TouchableOpacity
+                key={route.key}
+                onPress={onPress}
+                style={{
+                  flex: 1,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+                activeOpacity={0.7}
+              >
+                <Ionicons
+                  name={iconName as keyof typeof Ionicons.glyphMap}
+                  size={24}
+                  color={color}
+                />
+                <Text
+                  style={{
+                    fontSize: 12,
+                    fontWeight: '600',
+                    color,
+                    marginTop: 4,
+                  }}
+                >
+                  {tabConfig.name}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      )}
     >
-      <Tab.Screen
-        name="Home"
-        component={HomeScreen}
-        options={{
-          tabBarLabel: 'Home',
-        }}
-      />
-      <Tab.Screen
-        name="Scan"
-        component={ScanScreen}
-        options={{
-          tabBarLabel: 'Scan',
-        }}
-      />
-      <Tab.Screen
-        name="Receipts"
-        component={ReceiptsScreen}
-        options={{
-          tabBarLabel: 'Receipts',
-        }}
-      />
-      <Tab.Screen
-        name="Analytics"
-        component={AnalyticsScreen}
-        options={{
-          tabBarLabel: 'Analytics',
-        }}
-      />
-      <Tab.Screen
-        name="Settings"
-        component={SettingsScreen}
-        options={{
-          tabBarLabel: 'Settings',
-        }}
-      />
+      <Tab.Screen name="Home" component={HomeScreen} />
+      <Tab.Screen name="Scan" component={ScanScreen} />
+      <Tab.Screen name="Receipts" component={ReceiptsScreen} />
+      <Tab.Screen name="Analytics" component={AnalyticsScreen} />
+      <Tab.Screen name="Settings" component={SettingsScreen} />
     </Tab.Navigator>
   );
 };
+
 
 const AppNavigator = () => {
   const { isAuthenticated, isLoading, loadToken } = useAuthStore();

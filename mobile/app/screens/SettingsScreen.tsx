@@ -166,8 +166,8 @@ const SettingsScreen = () => {
     {
       title: 'Preferences',
       items: [
-        { icon: '🔔', label: 'Notifications', value: notificationsEnabled, toggle: handleNotificationToggle },
-        { icon: '📲', label: 'Test Notification', value: null, action: handleTestNotification },
+        // { icon: '🔔', label: 'Notifications', value: notificationsEnabled, toggle: handleNotificationToggle },
+        // { icon: '📲', label: 'Test Notification', value: null, action: handleTestNotification },
         { icon: '🔄', label: 'Auto Sync', value: autoSync, toggle: setAutoSync },
       ],
     },

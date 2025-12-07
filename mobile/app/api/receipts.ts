@@ -2,6 +2,38 @@ import { Platform } from 'react-native';
 import api from './api';
 import { useAuthStore } from '../store/authStore';
 
+// Simple in-memory cache
+let receiptsCache: {
+    data: ReceiptData[];
+    timestamp: number;
+    params: string;
+} | null = null;
+
+export const invalidateReceiptsCache = () => {
+    console.log('[Receipts API] Invalidating cache');
+    receiptsCache = null;
+    spendingCache = null;
+};
+
+// Simple in-memory cache for spending
+let spendingCache: {
+    data: CategorySpending[];
+    timestamp: number;
+    params: string;
+} | null = null;
+
+export const getCachedReceipts = (): ReceiptData[] | null => {
+    return receiptsCache?.data || null;
+};
+
+export const getCachedSpending = (startDate?: string, endDate?: string): CategorySpending[] | null => {
+    const key = JSON.stringify({ startDate, endDate });
+    if (spendingCache && spendingCache.params === key) {
+        return spendingCache.data;
+    }
+    return null;
+};
+
 
 export interface ReceiptData {
     _id?: string;
@@ -112,6 +144,7 @@ export const uploadReceipt = async (imageUri: string): Promise<UploadReceiptResp
 
         const data = await response.json();
         console.log('[Receipts API] Upload successful:', data);
+        invalidateReceiptsCache(); // Invalidate cache on new upload
         return data;
     } catch (error: any) {
         console.error('[Receipts API] Upload failed:', error);
@@ -140,6 +173,7 @@ export const updateReceipt = async (
         );
 
         console.log('[Receipts API] Update successful');
+        invalidateReceiptsCache(); // Invalidate cache on update
         return response.data;
     } catch (error: any) {
         console.error('[Receipts API] Update failed:', error);
@@ -195,10 +229,28 @@ export const getReceiptById = async (receiptId: string): Promise<ReceiptData> =>
  */
 export const getReceipts = async (page: number = 1, limit: number = 10): Promise<ReceiptData[]> => {
     try {
+        const cacheKey = JSON.stringify({ page, limit });
+
+        // Return cached data if available and valid (e.g., < 5 mins or until invalidated)
+        if (receiptsCache && receiptsCache.params === cacheKey) {
+            console.log('[Receipts API] Returning cached receipts');
+            return receiptsCache.data;
+        }
+
         const response = await api.get<GetReceiptsResponse>('/receipts/receipts', {
             params: { page, limit }
         });
-        return response.data.receipts || [];
+
+        const data = response.data.receipts || [];
+
+        // Update cache
+        receiptsCache = {
+            data,
+            timestamp: Date.now(),
+            params: cacheKey
+        };
+
+        return data;
     } catch (error: any) {
         throw new Error(
             error.response?.data?.detail ||
@@ -231,6 +283,7 @@ export const updateReceiptCategory = async (
         );
 
         console.log('[Receipts API] Category update successful');
+        invalidateReceiptsCache(); // Invalidate cache on category update
         return response.data;
     } catch (error: any) {
         console.error('[Receipts API] Category update failed:', error);
@@ -261,6 +314,16 @@ export const getSpendingByCategory = async (
     try {
         console.log('[Receipts API] Fetching spending by category');
 
+        const cacheKey = JSON.stringify({
+            startDate: startDate || null,
+            endDate: endDate || null
+        });
+
+        if (spendingCache && spendingCache.params === cacheKey) {
+            console.log('[Receipts API] Returning cached spending data');
+            return spendingCache.data;
+        }
+
         const response = await api.get<{ data: CategorySpending[] }>(
             '/analytics/spending_by_category',
             {
@@ -271,8 +334,16 @@ export const getSpendingByCategory = async (
             }
         );
 
-        console.log('[Receipts API] Spending data retrieved:', response.data.data);
-        return response.data.data || [];
+        const data = response.data.data || [];
+
+        spendingCache = {
+            data,
+            timestamp: Date.now(),
+            params: cacheKey
+        };
+
+        console.log('[Receipts API] Spending data retrieved:', data);
+        return data;
     } catch (error: any) {
         console.error('[Receipts API] Failed to fetch spending data:', error);
         throw new Error(
@@ -297,6 +368,7 @@ export const deleteReceipt = async (receiptId: string): Promise<{ message: strin
         );
 
         console.log('[Receipts API] Delete successful');
+        invalidateReceiptsCache(); // Invalidate cache on delete
         return response.data;
     } catch (error: any) {
         console.error('[Receipts API] Delete failed:', error);
