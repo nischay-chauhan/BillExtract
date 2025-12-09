@@ -7,6 +7,8 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import { ScreenWrapper } from '../components/ui/ScreenWrapper';
 import { Title, Subtitle, Caption, Body } from '../components/ui/Typography';
 import { Card } from '../components/ui/Card';
+import { FadeInView } from '../components/ui/FadeInView';
+import { AnimatedNumber } from '../components/ui/AnimatedNumber';
 import { getReceipts, ReceiptData, getCachedReceipts, invalidateReceiptsCache } from '../api/receipts';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import { spacing } from '../utils/responsive';
@@ -27,6 +29,7 @@ const ReceiptsScreen = () => {
   const [startDate, setStartDate] = useState<Date | null>(null);
   const [endDate, setEndDate] = useState<Date | null>(null);
   const [showPicker, setShowPicker] = useState<'start' | 'end' | null>(null);
+  const [focusKey, setFocusKey] = useState(0);
 
   const fetchReceipts = async () => {
     try {
@@ -43,6 +46,13 @@ const ReceiptsScreen = () => {
   useEffect(() => {
     fetchReceipts();
   }, []);
+
+  // Trigger animations on each screen focus
+  useFocusEffect(
+    useCallback(() => {
+      setFocusKey(prev => prev + 1);
+    }, [])
+  );
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -236,42 +246,50 @@ const ReceiptsScreen = () => {
             <Body className="text-gray-400">No receipts found</Body>
           </View>
         }
-        renderItem={({ item }) => {
+        renderItem={({ item, index }) => {
           const numericTotal = sanitizeNumber(item.total);
-          const formattedTotal = `₹${numericTotal.toFixed(2)}`;
 
           return (
-            <TouchableOpacity
-              onPress={() => navigation.navigate('ReceiptDetails', { receipt: item })}
-              activeOpacity={0.7}
-            >
-              <Card
-                style={{
-                  marginBottom: spacing.md,
-                  shadowColor: "#000",
-                  shadowOffset: {
-                    width: 0,
-                    height: 2,
-                  },
-                  shadowOpacity: 0.1,
-                  shadowRadius: 3.84,
-                  elevation: 5,
-                }}
-                className="bg-white rounded-xl"
+            <FadeInView key={`receipt-${item._id || item.id}-${focusKey}`} delay={index * 50} duration={400}>
+              <TouchableOpacity
+                onPress={() => navigation.navigate('ReceiptDetails', { receipt: item })}
+                activeOpacity={0.7}
               >
-                <View className="flex-row justify-between items-start mb-2">
-                  <View>
-                    <Subtitle className="mb-0">{item.store_name || 'Unknown Store'}</Subtitle>
-                    <Caption>{formatDate(item.date)}</Caption>
+                <Card
+                  style={{
+                    marginBottom: spacing.md,
+                    shadowColor: "#000",
+                    shadowOffset: {
+                      width: 0,
+                      height: 2,
+                    },
+                    shadowOpacity: 0.1,
+                    shadowRadius: 3.84,
+                    elevation: 5,
+                  }}
+                  className="bg-white rounded-xl"
+                >
+                  <View className="flex-row justify-between items-start mb-2">
+                    <View>
+                      <Subtitle className="mb-0">{item.store_name || 'Unknown Store'}</Subtitle>
+                      <Caption>{formatDate(item.date)}</Caption>
+                    </View>
+                    <AnimatedNumber
+                      value={numericTotal}
+                      prefix="₹"
+                      decimalPlaces={2}
+                      duration={600}
+                      resetKey={focusKey}
+                      style={{ fontSize: 18, fontWeight: 'bold', color: '#2563eb' }}
+                    />
                   </View>
-                  <Title className="text-xl text-blue-600 mb-0">{formattedTotal}</Title>
-                </View>
-                <View className="flex-row justify-between items-center border-t border-gray-100 pt-2 mt-1">
-                  <Caption>{item.items?.length || 0} items</Caption>
-                  <Body className="text-sm text-blue-500 font-medium">View Details →</Body>
-                </View>
-              </Card>
-            </TouchableOpacity>
+                  <View className="flex-row justify-between items-center border-t border-gray-100 pt-2 mt-1">
+                    <Caption>{item.items?.length || 0} items</Caption>
+                    <Body className="text-sm text-blue-500 font-medium">View Details →</Body>
+                  </View>
+                </Card>
+              </TouchableOpacity>
+            </FadeInView>
           );
         }}
       />

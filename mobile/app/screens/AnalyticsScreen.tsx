@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback, memo } from "react";
 import { View, ScrollView, TouchableOpacity, Text, Platform, StyleSheet, Dimensions } from "react-native";
+import { useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from "expo-linear-gradient";
 import { PieChart, BarChart } from "react-native-gifted-charts";
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -18,6 +19,7 @@ import Svg, { Defs, LinearGradient as SvgGradient, Stop, Rect } from 'react-nati
 
 import { ScreenWrapper } from "../components/ui/ScreenWrapper";
 import { Title, Subtitle, Body, Caption } from "../components/ui/Typography";
+import { AnimatedNumber } from "../components/ui/AnimatedNumber";
 import { wp, hp, spacing, isSmallDevice } from "../utils/responsive";
 import { getSpendingByCategory, getCachedSpending } from "../api/receipts";
 
@@ -129,6 +131,7 @@ const AnalyticsScreen = () => {
   const [categoryData, setCategoryData] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [focusKey, setFocusKey] = useState(0);
 
   // Scroll animation for parallax header
   const scrollY = useSharedValue(0);
@@ -197,6 +200,13 @@ const AnalyticsScreen = () => {
   useEffect(() => {
     fetchAnalytics();
   }, [fetchAnalytics]);
+
+  // Trigger animations on each screen focus
+  useFocusEffect(
+    useCallback(() => {
+      setFocusKey(prev => prev + 1);
+    }, [])
+  );
 
   const { totalSpending, totalReceipts, topCategory } = useMemo(() => ({
     totalSpending: categoryData.reduce((s, i) => s + i.total, 0),
@@ -376,15 +386,22 @@ const AnalyticsScreen = () => {
                       <Text style={styles.statIcon}>💰</Text>
                     </View>
                     <Caption style={styles.statLabel}>Total Spending</Caption>
-                    <Text
+                    <AnimatedNumber
+                      value={totalSpending}
+                      prefix="₹"
+                      compact={totalSpending >= 10000000}
+                      duration={1000}
+                      resetKey={focusKey}
                       style={styles.statValue}
-                      numberOfLines={1}
-                      adjustsFontSizeToFit
-                    >
-                      {formatCurrency(totalSpending, totalSpending >= 10000000)}
-                    </Text>
+                    />
                     <Caption style={styles.statSubtext}>
-                      {totalReceipts} receipt{totalReceipts !== 1 ? 's' : ''}
+                      <AnimatedNumber
+                        value={totalReceipts}
+                        decimalPlaces={0}
+                        duration={800}
+                        resetKey={focusKey}
+                        style={{ color: '#e9d5ff', fontSize: 12 }}
+                      /> receipt{totalReceipts !== 1 ? 's' : ''}
                     </Caption>
                   </LinearGradient>
                 </View>
@@ -407,7 +424,16 @@ const AnalyticsScreen = () => {
                       {topCategory ? getCategoryLabel(topCategory.category) : "N/A"}
                     </Text>
                     <Caption style={[styles.statSubtext, { color: "#cffafe" }]}>
-                      {topCategory ? formatCurrency(topCategory.total, true) : "₹0.00"}
+                      {topCategory ? (
+                        <AnimatedNumber
+                          value={topCategory.total}
+                          prefix="₹"
+                          compact
+                          duration={800}
+                          resetKey={focusKey}
+                          style={{ color: '#cffafe', fontSize: 12 }}
+                        />
+                      ) : "₹0.00"}
                     </Caption>
                   </LinearGradient>
                 </View>
